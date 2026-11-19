@@ -141,6 +141,12 @@ export const usersApi = {
     form.append('avatar', file);
     return request<{ avatarUrl: string }>('/users/me/avatar', { method: 'POST', body: form });
   },
+  uploadBanner: async (file: File) => {
+    const form = new FormData();
+    form.append('banner', file);
+    return request<{ bannerUrl: string }>('/users/me/banner', { method: 'POST', body: form });
+  },
+  removeBanner: () => api.del<{ ok: boolean }>('/users/me/banner'),
   search: (q: string) => api.get<{ users: PublicUser[] }>(`/users/search?q=${encodeURIComponent(q)}`),
   profile: (id: string) =>
     api.get<{
@@ -157,7 +163,7 @@ export const usersApi = {
 /* ---------------------------------- sunucu --------------------------------- */
 
 export const serversApi = {
-  create: (input: { name: string; description?: string; iconColor?: string; isPublic?: boolean }) =>
+  create: (input: { name: string; description?: string; iconColor?: string; isPublic?: boolean; template?: string }) =>
     api.post<{ server: ServerDetail }>('/servers', input),
   detail: (id: string) => api.get<{ server: ServerDetail }>(`/servers/${id}`),
   update: (id: string, patch: { name?: string; description?: string; iconColor?: string; isPublic?: boolean }) =>

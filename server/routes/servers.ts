@@ -55,6 +55,8 @@ router.post('/', (req, res) => {
   const description = optionalStr(req.body?.description, 'Açıklama', { max: 300 }) ?? '';
   const iconColor = color(req.body?.iconColor, 'Sunucu rengi', '#7c5cff');
   const isPublic = req.body?.isPublic === true;
+  const templateRaw = String(req.body?.template ?? 'community');
+  const template = ['community', 'gaming', 'study', 'empty'].includes(templateRaw) ? templateRaw : 'community';
   const serverId = newId('srv');
   const stamp = now();
   const everyoneId = newId('rol');
@@ -86,6 +88,64 @@ router.post('/', (req, res) => {
     db.prepare(
       'INSERT INTO channels (id, server_id, category_id, name, topic, type, position, slowmode_seconds, is_private, created_at) VALUES (?,?,?,?,?,?,?,0,0,?)',
     ).run(forumId, serverId, categoryId, 'duyurular', 'Topluluk duyuruları', 'forum', 2, stamp);
+
+    /* Şablona göre ek kategoriler ve kanallar. */
+    type TemplateChannel = { name: string; type: 'text' | 'voice' | 'forum'; topic?: string };
+    const layouts: Record<string, { category: string; channels: TemplateChannel[] }[]> = {
+      community: [
+        {
+          category: 'TOPLULUK',
+          channels: [
+            { name: 'sohbet', type: 'text', topic: 'Günlük sohbet' },
+            { name: 'tanisma', type: 'text', topic: 'Kendinizi tanıtın' },
+            { name: 'etkinlikler', type: 'forum', topic: 'Yaklaşan etkinlikler' },
+          ],
+        },
+        { category: 'SESLİ', channels: [{ name: 'Toplantı', type: 'voice' }] },
+      ],
+      gaming: [
+        {
+          category: 'OYUN',
+          channels: [
+            { name: 'genel-sohbet', type: 'text', topic: 'Oyun sohbeti' },
+            { name: 'takim-ara', type: 'text', topic: 'Takım arkadaşı bulun' },
+            { name: 'klipler', type: 'text', topic: 'En iyi anlarınız' },
+          ],
+        },
+        {
+          category: 'SESLİ ODALAR',
+          channels: [
+            { name: 'Oyun Odası 1', type: 'voice' },
+            { name: 'Oyun Odası 2', type: 'voice' },
+          ],
+        },
+      ],
+      study: [
+        {
+          category: 'ÇALIŞMA',
+          channels: [
+            { name: 'ders-notlari', type: 'text', topic: 'Paylaşılan notlar' },
+            { name: 'soru-cevap', type: 'forum', topic: 'Sorularınızı sorun' },
+          ],
+        },
+        { category: 'SESLİ', channels: [{ name: 'Sessiz Çalışma', type: 'voice' }] },
+      ],
+      empty: [],
+    };
+    (layouts[template] ?? []).forEach((group, groupIndex) => {
+      const extraCategoryId = newId('cat');
+      db.prepare('INSERT INTO channel_categories (id, server_id, name, position) VALUES (?,?,?,?)').run(
+        extraCategoryId,
+        serverId,
+        group.category,
+        groupIndex + 1,
+      );
+      group.channels.forEach((channel, channelIndex) => {
+        db.prepare(
+          'INSERT INTO channels (id, server_id, category_id, name, topic, type, position, slowmode_seconds, is_private, created_at) VALUES (?,?,?,?,?,?,?,0,0,?)',
+        ).run(newId('chn'), serverId, extraCategoryId, channel.name, channel.topic ?? '', channel.type, channelIndex, stamp);
+      });
+    });
   })();
 
   const ctx = requireMemberContext(serverId, uid(req));
