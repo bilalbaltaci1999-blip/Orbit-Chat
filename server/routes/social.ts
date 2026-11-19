@@ -222,7 +222,7 @@ router.get('/dms/:dmId/messages', (req, res) => {
 });
 
 router.post('/dms/:dmId/messages', rateLimit({ windowMs: 10_000, max: 30 }), (req, res) => {
-  const dm = assertDmMember(req.params.dmId, uid(req));
+  const dm = assertDmMember(String(req.params.dmId), uid(req));
   const message = createMessage({
     authorId: uid(req),
     dmId: dm.id,

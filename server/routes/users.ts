@@ -60,15 +60,24 @@ router.patch('/me', (req, res) => {
   res.json({ user, row: Boolean(row) });
 });
 
-function mapPatch(user: { status: string; customStatus: string }, body: Record<string, unknown>) {
-  return {
-    displayName: body.displayName !== undefined ? String(body.displayName) : undefined,
-    bio: body.bio !== undefined ? String(body.bio) : undefined,
-    avatarColor: body.avatarColor !== undefined ? String(body.avatarColor) : undefined,
-    customStatus: body.customStatus !== undefined ? String(body.customStatus) : user.customStatus,
-    theme: body.theme !== undefined ? String(body.theme) : undefined,
-    status: body.status !== undefined ? String(body.status) : user.status,
-  };
+type ProfilePatch = {
+  displayName?: string;
+  bio?: string;
+  avatarColor?: string;
+  customStatus?: string;
+  theme?: 'dark' | 'light';
+  status?: 'online' | 'idle' | 'dnd' | 'offline' | 'invisible';
+};
+
+function mapPatch(user: { status: string; customStatus: string }, body: Record<string, unknown>): ProfilePatch {
+  const patch: ProfilePatch = {};
+  if (body.displayName !== undefined) patch.displayName = String(body.displayName);
+  if (body.bio !== undefined) patch.bio = String(body.bio);
+  if (body.avatarColor !== undefined) patch.avatarColor = String(body.avatarColor);
+  if (body.customStatus !== undefined) patch.customStatus = String(body.customStatus);
+  if (body.theme !== undefined) patch.theme = body.theme === 'light' ? 'light' : 'dark';
+  if (body.status !== undefined) patch.status = String(body.status) as ProfilePatch['status'];
+  return patch;
 }
 
 function broadcastPresence(userId: string): void {
