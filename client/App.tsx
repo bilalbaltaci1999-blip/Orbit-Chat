@@ -1429,13 +1429,11 @@ function Shell() {
                   }
                 }
                 for (const dm of boot.dms) {
-                  const label =
-                    dm.name ??
-                    dm.members
-                      .filter((member) => member.id !== me.id)
-                      .map((member) => member.displayName)
-                      .join(', ') ||
-                    'Grup sohbeti';
+                  const memberLabel = dm.members
+                    .filter((member) => member.id !== me.id)
+                    .map((member) => member.displayName)
+                    .join(', ');
+                  const label = dm.name ?? (memberLabel || 'Grup sohbeti');
                   items.push({ id: `dm:${dm.id}`, label, hint: 'Özel mesaj', icon: 'users', run: () => openDm(dm.id) });
                 }
                 const filtered = needle
