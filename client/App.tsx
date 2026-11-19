@@ -329,13 +329,21 @@ function CreateServerModal({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [iconColor, setIconColor] = useState('#7c5cff');
+  const [template, setTemplate] = useState<'community' | 'gaming' | 'study' | 'empty'>('community');
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     try {
-      const result = await serversApi.create({ name: name.trim(), description: description.trim(), isPublic });
+      const result = await serversApi.create({
+        name: name.trim(),
+        description: description.trim(),
+        isPublic,
+        iconColor,
+        template,
+      });
       toast.push(`${result.server.name} topluluğu oluşturuldu.`, 'success');
       onCreated(result.server);
     } catch (err) {
@@ -363,6 +371,36 @@ function CreateServerModal({
             placeholder="Topluluğunuz ne hakkında?"
           />
         </label>
+        <div className="field">
+          <label>Sunucu rengi</label>
+          <div className="swatch-row">
+            {['#7c5cff', '#4f7dff', '#22d3ee', '#f472b6', '#34d399', '#fbbf24'].map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`swatch${iconColor === color ? ' active' : ''}`}
+                style={{ background: color }}
+                aria-label={`Sunucu rengi ${color}`}
+                onClick={() => setIconColor(color)}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="server-template">Hazır şablon</label>
+          <select
+            id="server-template"
+            className="input"
+            value={template}
+            onChange={(event) => setTemplate(event.target.value as typeof template)}
+          >
+            <option value="community">Topluluk — sohbet, tanışma, etkinlik ve sesli kanal</option>
+            <option value="gaming">Oyun — sohbet, takım arama, klipler ve 2 sesli oda</option>
+            <option value="study">Çalışma — ders notları, soru-cevap ve sessiz çalışma</option>
+            <option value="empty">Boş — yalnızca varsayılan kanallar</option>
+          </select>
+          <div className="hint">Sunucu oluşturulunca şablondaki kategori ve kanallar otomatik eklenir.</div>
+        </div>
         <label className="row" style={{ gap: 10, alignItems: 'center' }}>
           <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
           <span>Herkese açık topluluk (keşfet listesinde görünür)</span>
