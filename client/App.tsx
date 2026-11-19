@@ -540,6 +540,7 @@ function Shell() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(true);
+  const landedRef = useRef(false);
   const [navOpen, setNavOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const activeRef = useRef<{ channelId: string | null; dmId: string | null }>({ channelId: null, dmId: null });
