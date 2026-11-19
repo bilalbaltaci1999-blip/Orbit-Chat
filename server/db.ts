@@ -402,6 +402,25 @@ CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
   },
 ];
 
+/* Profil görünümü (banner), öne çıkan rozetler ve kişisel notlar. */
+migrations.push({
+  id: 3,
+  name: 'profile_badges_and_notes',
+  sql: `
+ALTER TABLE users ADD COLUMN banner_color TEXT NOT NULL DEFAULT '#1a1440';
+ALTER TABLE users ADD COLUMN featured_badges TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS user_notes (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  note TEXT NOT NULL DEFAULT '',
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, target_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_notes_target ON user_notes(target_id);
+`,
+});
+
 export function runMigrations(): void {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     id INTEGER PRIMARY KEY,

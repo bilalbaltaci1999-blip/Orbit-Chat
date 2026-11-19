@@ -19,6 +19,7 @@ import type {
 } from '../shared/types';
 import type { ChannelRow, MemberContext, RoleRow, ServerRow } from './permissions';
 import { canViewChannel, channelPermissions } from './permissions';
+import { DEFAULT_BANNER } from '../shared/badges';
 
 interface UserRow {
   id: string;
@@ -30,6 +31,7 @@ interface UserRow {
   status: string;
   custom_status: string;
   created_at: number;
+  banner_color?: string | null;
 }
 
 const qUser = db.prepare(
@@ -48,6 +50,7 @@ export function publicUser(row: UserRow | null | undefined): PublicUser | null {
     status: row.status as UserStatus,
     customStatus: row.custom_status,
     createdAt: row.created_at,
+    bannerColor: row.banner_color ?? DEFAULT_BANNER,
   };
 }
 
