@@ -496,6 +496,8 @@ function Shell() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const activeRef = useRef<{ channelId: string | null; dmId: string | null }>({ channelId: null, dmId: null });
@@ -550,6 +552,18 @@ function Shell() {
       alive = false;
     };
   }, [applyBoot]);
+
+  // Oturum açıldığında boş "Arkadaşlar" ekranı yerine doğrudan ilk kanala gir.
+  useEffect(() => {
+    if (!boot || landedRef.current) return;
+    landedRef.current = true;
+    const first = boot.servers[0];
+    if (!first) return;
+    setView('server');
+    setServerId(first.id);
+    const channel = first.channels.find((item) => item.type !== 'voice');
+    setChannelId(channel?.id ?? null);
+  }, [boot]);
 
   const userId = boot?.user.id ?? null;
 
@@ -789,7 +803,11 @@ function Shell() {
   const dmScope = view === 'dm' && activeDm ? ({ kind: 'dm', dm: activeDm } as const) : null;
 
   return (
-    <div className={`app${navOpen ? ' nav-open' : ''}`}>
+    <div
+      className={`app${navOpen ? ' nav-open' : ''}${
+        view === 'server' && activeServer && membersOpen ? ' with-members' : ''
+      }`}
+    >
       <nav className="rail" aria-label="Sunucular ve görünümler">
         <button
           type="button"
@@ -828,6 +846,15 @@ function Shell() {
         <button
           type="button"
           className="rail-btn"
+          aria-label="Davet koduyla katıl"
+          title="Davet koduyla katıl"
+          onClick={() => setJoinOpen(true)}
+        >
+          <Icon name="link" size={20} />
+        </button>
+        <button
+          type="button"
+          className="rail-btn"
           aria-label="Topluluk keşfet"
           aria-current={view === 'discover' ? 'page' : undefined}
           onClick={() => {
@@ -850,6 +877,15 @@ function Shell() {
               <strong className="truncate" style={{ flex: 1 }}>
                 {activeServer.name}
               </strong>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Üye listesi"
+                aria-pressed={membersOpen}
+                onClick={() => setMembersOpen((value) => !value)}
+              >
+                <Icon name="users" size={17} />
+              </button>
               <button type="button" className="icon-btn" aria-label="Davet et" onClick={() => setInviteOpen(true)}>
                 <Icon name="link" size={17} />
               </button>
@@ -1035,7 +1071,7 @@ function Shell() {
             members={activeServer?.members ?? []}
             myPermissions={activeServer?.myPermissions ?? 0}
             onOpenProfile={setProfileId}
-            onMembersToggle={() => undefined}
+            onMembersToggle={() => setMembersOpen((value) => !value)}
             onBack={() => setNavOpen(true)}
             onScopeChanged={async () => {
               setUnread((prev) => ({ ...prev, [channelScope.channel.id]: 0 }));
@@ -1050,7 +1086,7 @@ function Shell() {
             members={[]}
             myPermissions={0}
             onOpenProfile={setProfileId}
-            onMembersToggle={() => undefined}
+            onMembersToggle={() => setMembersOpen((value) => !value)}
             onBack={() => setNavOpen(true)}
             onScopeChanged={async () => {
               setUnread((prev) => ({ ...prev, [dmScope.dm.id]: 0 }));
