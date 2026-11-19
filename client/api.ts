@@ -124,8 +124,15 @@ export const authApi = {
 
 export const usersApi = {
   me: () => api.get<{ user: MeUser }>('/users/me'),
-  updateMe: (patch: { displayName?: string; username?: string; bio?: string; customStatus?: string; status?: string }) =>
-    api.patch<{ user: MeUser }>('/users/me', patch),
+  updateMe: (patch: {
+    displayName?: string;
+    username?: string;
+    bio?: string;
+    customStatus?: string;
+    status?: string;
+    bannerColor?: string;
+    featuredBadges?: string[];
+  }) => api.patch<{ user: MeUser }>('/users/me', patch),
   updateSettings: (patch: Partial<UserSettings> & { theme?: 'dark' | 'light' }) =>
     api.patch<{ settings: UserSettings }>('/users/me/settings', patch),
   uploadAvatar: async (file: File) => {
@@ -134,7 +141,16 @@ export const usersApi = {
     return request<{ avatarUrl: string }>('/users/me/avatar', { method: 'POST', body: form });
   },
   search: (q: string) => api.get<{ users: PublicUser[] }>(`/users/search?q=${encodeURIComponent(q)}`),
-  profile: (id: string) => api.get<{ user: PublicUser; friendship: { status: string; requestId: string | null } }>(`/users/${id}`),
+  profile: (id: string) =>
+    api.get<{
+      user: PublicUser;
+      badges: Badge[];
+      featuredBadges: string[];
+      note: string;
+      friendship: { status: string; requestId: string | null };
+      mutualServers: { id: string; name: string; iconColor: string }[];
+    }>(`/users/${id}`),
+  setNote: (id: string, note: string) => api.put<{ note: string }>(`/users/${id}/note`, { note }),
 };
 
 /* ---------------------------------- sunucu --------------------------------- */

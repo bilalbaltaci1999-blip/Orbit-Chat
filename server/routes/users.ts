@@ -167,7 +167,7 @@ router.get('/search', (req, res) => {
   const q = str(req.query.q, 'Arama', { min: 1, max: 32 }).toLowerCase();
   const rows = db
     .prepare(
-      `SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at
+      `SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at, banner_color
        FROM users WHERE (LOWER(username) LIKE ? OR LOWER(display_name) LIKE ?) AND id != ?
        ORDER BY username LIMIT 12`,
     )
@@ -178,7 +178,7 @@ router.get('/search', (req, res) => {
 router.get('/:id', (req, res) => {
   const row = db
     .prepare(
-      'SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at FROM users WHERE id = ?',
+      'SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at, banner_color, featured_badges FROM users WHERE id = ?',
     )
     .get(req.params.id) as never;
   const user = publicUser(row);
@@ -213,11 +213,42 @@ router.get('/:id', (req, res) => {
   else if (pendingIn) status = 'incoming';
   else if (pendingOut) status = 'outgoing';
 
+  const noteRow = db
+    .prepare('SELECT note FROM user_notes WHERE user_id = ? AND target_id = ?')
+    .get(req.user!.id, req.params.id) as { note: string } | undefined;
+  const featuredRow = db.prepare('SELECT featured_badges FROM users WHERE id = ?').get(req.params.id) as
+    | { featured_badges: string | null }
+    | undefined;
+  const earned = computeBadges(req.params.id);
+
   res.json({
-    user,
+    user: { ...user, badges: earned },
+    badges: resolveBadges(earned),
+    featuredBadges: (featuredRow?.featured_badges ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => earned.includes(value)),
+    note: noteRow?.note ?? '',
     friendship: { status, requestId: pendingIn?.id ?? pendingOut?.id ?? null },
     mutualServers: mutual.map((m) => ({ id: m.id, name: m.name, iconColor: m.icon_color })),
   });
+});
+
+/** Kişisel not — yalnızca notu yazan kullanıcı görebilir. */
+router.put('/:id/note', (req, res) => {
+  const target = db.prepare('SELECT 1 FROM users WHERE id = ?').get(req.params.id);
+  if (!target) throw new ApiError(404, 'Kullanıcı bulunamadı.', 'USER_NOT_FOUND');
+  if (req.params.id === req.user!.id) throw new ApiError(400, 'Kendinize not ekleyemezsiniz.', 'SELF_NOTE');
+  const note = optionalStr(req.body?.note, 'Not', { max: 256 }) ?? '';
+  if (!note) {
+    db.prepare('DELETE FROM user_notes WHERE user_id = ? AND target_id = ?').run(req.user!.id, req.params.id);
+  } else {
+    db.prepare(
+      `INSERT INTO user_notes (user_id, target_id, note, updated_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, target_id) DO UPDATE SET note = excluded.note, updated_at = excluded.updated_at`,
+    ).run(req.user!.id, req.params.id, note, now());
+  }
+  res.json({ note });
 });
 
 export default router;
