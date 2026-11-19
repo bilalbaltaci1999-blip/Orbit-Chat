@@ -660,6 +660,22 @@ function Shell() {
     activeRef.current = { channelId, dmId };
   }, [channelId, dmId]);
 
+  /* Görünüm tercihlerini (vurgu rengi, kompakt mod, yoğunluk) global CSS'e uygula. */
+  useEffect(() => {
+    const settings = boot?.user.settings;
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.accentColor) {
+      root.style.setProperty('--brand', settings.accentColor);
+      root.style.setProperty('--brand-glow', `${settings.accentColor}59`);
+    } else {
+      root.style.removeProperty('--brand');
+      root.style.removeProperty('--brand-glow');
+    }
+    root.classList.toggle('compact-mode', Boolean(settings.compactMode));
+    root.dataset.density = settings.messageDensity ?? 'cozy';
+  }, [boot?.user.settings]);
+
   const applyBoot = useCallback((data: Bootstrap) => {
     setBoot(data);
     setUnread((prev) => ({ ...prev, ...data.unread }));

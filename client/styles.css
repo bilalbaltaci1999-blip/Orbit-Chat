@@ -2018,3 +2018,25 @@ a {
 .palette-item:focus-visible {
   background: var(--hover);
 }
+
+/* ---- Kompakt görünüm ve yoğunluk tercihleri ---- */
+.compact-mode {
+  font-size: 13px;
+}
+.compact-mode .msg {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.compact-mode .member-row {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.compact-mode .messages-inner {
+  gap: 0;
+}
+[data-density='compact'] .msg .content {
+  line-height: 1.35;
+}
+[data-density='cozy'] .msg .content {
+  line-height: 1.55;
+}
