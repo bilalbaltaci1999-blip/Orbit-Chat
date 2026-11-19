@@ -52,6 +52,15 @@ router.get('/discover', requireAuth, (req: Request, res) => {
   });
 });
 
+router.post('/discover/:serverId/join', requireAuth, (req: Request, res) => {
+  const server = db.prepare('SELECT id, is_public FROM servers WHERE id = ?').get(req.params.serverId) as
+    | { id: string; is_public: number }
+    | undefined;
+  if (!server || !server.is_public) throw new ApiError(404, 'Topluluk bulunamadı.', 'NOT_FOUND');
+  joinServer(server.id, req.user!.id);
+  res.json({ ok: true, serverId: server.id });
+});
+
 /* ----------------------------------- davetler -------------------------------- */
 
 function loadInvite(code: string) {
