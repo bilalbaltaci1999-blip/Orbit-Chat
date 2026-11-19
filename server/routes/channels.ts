@@ -138,7 +138,7 @@ router.post(
   '/channels/:channelId/messages',
   rateLimit({ windowMs: 10_000, max: 20, message: 'Çok hızlı mesaj gönderiyorsunuz.' }),
   (req, res) => {
-    const { channel } = requireChannelAccess(uid(req), req.params.channelId, PERMISSIONS.SEND_MESSAGES);
+    const { channel } = requireChannelAccess(uid(req), String(req.params.channelId), PERMISSIONS.SEND_MESSAGES);
     const message = createMessage({
       authorId: uid(req),
       channelId: channel.id,

@@ -96,6 +96,7 @@ interface UserRow {
   status: string;
   custom_status: string;
   theme: 'dark' | 'light';
+  password_hash: string;
   created_at: number;
 }
 

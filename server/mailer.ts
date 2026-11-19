@@ -1,13 +1,15 @@
 /** E-posta gönderimi (SMTP). SMTP_URL tanımlı değilse gönderim yapılmaz. */
 import nodemailer from 'nodemailer';
 
-let transport: nodemailer.Transporter | null = null;
+type Transporter = ReturnType<typeof nodemailer.createTransport>;
+
+let transport: Transporter | null = null;
 
 export function mailConfigured(): boolean {
   return Boolean(process.env.SMTP_URL);
 }
 
-function getTransport(): nodemailer.Transporter {
+function getTransport(): Transporter {
   if (!transport) {
     transport = nodemailer.createTransport(process.env.SMTP_URL as string);
   }

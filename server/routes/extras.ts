@@ -92,7 +92,7 @@ function loadInvite(code: string) {
 }
 
 router.get('/invites/:code', requireAuth, (req, res) => {
-  const invite = loadInvite(req.params.code);
+  const invite = loadInvite(String(req.params.code));
   const joined = db.prepare('SELECT 1 FROM server_members WHERE server_id = ? AND user_id = ?').get(invite.server_id, req.user!.id);
   res.json({
     invite: {
@@ -109,7 +109,7 @@ router.get('/invites/:code', requireAuth, (req, res) => {
 });
 
 router.post('/invites/:code/join', requireAuth, (req, res) => {
-  const invite = loadInvite(req.params.code);
+  const invite = loadInvite(String(req.params.code));
   const ctx = memberContext(invite.server_id, req.user!.id);
   if (ctx) return res.json({ server: serverDetail(ctx), alreadyMember: true });
   joinServer(invite.server_id, req.user!.id);
@@ -140,7 +140,7 @@ router.post('/webhooks/:webhookId/:token', (req, res) => {
     `INSERT INTO messages (id, channel_id, dm_id, author_id, content, title, parent_id, type, pinned, created_at)
      VALUES (?, ?, NULL, NULL, ?, NULL, NULL, 'text', 0, ?)`,
   ).run(messageId, webhook.channel_id, `**[${webhook.name}]** ${content}`, now());
-  const message = mapMessage(db.prepare(`SELECT ${messageColumns} FROM messages WHERE id = ?`).get(messageId) as never, null);
+  const message = mapMessage(db.prepare(`SELECT ${messageColumns} FROM messages WHERE id = ?`).get(messageId) as never, '');
   emitToChannel(webhook.channel_id, 'message:create', message);
   res.status(201).json({ message });
 });

@@ -3,9 +3,9 @@
  * Yavaş mod, susturma, engelleme ve izin denetimleri burada uygulanır.
  */
 import { db, newId, now } from './db';
-import { ApiError, requireChannelAccess, getServerMembers } from './permissions';
+import { ApiError, requireChannelAccess } from './permissions';
 import { PERMISSIONS } from '../shared/permissions';
-import { mapMessage, messageColumns } from './serialize';
+import { getServerMembers, mapMessage, messageColumns } from './serialize';
 import { emitToChannel, emitToDm, emitToServer, notify } from './realtime';
 import type { Message } from '../shared/types';
 
