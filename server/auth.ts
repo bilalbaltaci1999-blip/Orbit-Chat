@@ -5,6 +5,7 @@
 import crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { db, newId, now } from './db';
+import { DEFAULT_BANNER } from '../shared/badges';
 
 export const SESSION_COOKIE = 'orbit_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 gün
