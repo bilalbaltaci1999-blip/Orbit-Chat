@@ -2,6 +2,14 @@
 
 export type UserStatus = 'online' | 'idle' | 'dnd' | 'offline' | 'invisible';
 
+export interface Badge {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
 export interface PublicUser {
   id: string;
   username: string;
@@ -12,12 +20,18 @@ export interface PublicUser {
   status: UserStatus;
   customStatus: string;
   createdAt: number;
+  /** Profil kartının üst şerit rengi. */
+  bannerColor?: string;
+  /** Kazanılmış rozet kimlikleri (sunucu tarafında hesaplanır). */
+  badges?: string[];
 }
 
 export interface MeUser extends PublicUser {
   email: string;
   theme: 'dark' | 'light';
   settings: UserSettings;
+  /** Profil kartında öne çıkarılan rozetler. */
+  featuredBadges?: string[];
 }
 
 export interface UserSettings {
