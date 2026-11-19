@@ -5,7 +5,11 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
-COPY . .
+# Yalnızca kaynak dosyalar kopyalanır; yerel node_modules/data imaja sızmaz.
+COPY tsconfig.json tsconfig.server.json vite.config.ts ./
+COPY client ./client
+COPY server ./server
+COPY shared ./shared
 # The build needs dev dependencies; they are removed before the copy below.
 RUN npm run build && npm prune --omit=dev
 FROM node:26-alpine
