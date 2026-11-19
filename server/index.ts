@@ -77,7 +77,9 @@ if (fs.existsSync(clientDir)) {
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof ApiError) {
-    res.status(err.status).json({ error: { message: err.message, code: err.code } });
+    res.status(err.status).json({
+      error: { message: err.message, code: err.code, ...(err.details ? { details: err.details } : {}) },
+    });
     return;
   }
   const anyErr = err as { type?: string; status?: number; message?: string };
