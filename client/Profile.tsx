@@ -153,7 +153,18 @@ export function ProfileCard({
         <Spinner label="Profil yükleniyor…" />
       ) : (
         <div className="profile-card">
-          <div className="profile-banner" style={{ background: `linear-gradient(135deg, ${banner}, ${banner}99 60%, #7c5cff55)` }}>
+          <div
+            className="profile-banner"
+            style={
+              data.user.bannerUrl
+                ? {
+                    backgroundImage: `url(${data.user.bannerUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : { background: `linear-gradient(135deg, ${banner}, ${banner}99 60%, #7c5cff55)` }
+            }
+          >
             {featured.length > 0 ? (
               <div className="profile-featured" title="Öne çıkan rozetler">
                 <BadgeRow badges={featured} size={20} />

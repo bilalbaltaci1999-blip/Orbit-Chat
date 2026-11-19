@@ -53,6 +53,8 @@ export function UserSettingsModal({
   const [bannerColor, setBannerColor] = useState(me.bannerColor ?? DEFAULT_BANNER);
   const [featuredBadges, setFeaturedBadges] = useState<string[]>(me.featuredBadges ?? []);
   const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(me.bannerUrl ?? null);
+  const [bannerBusy, setBannerBusy] = useState(false);
 
   useEffect(() => {
     if (tab !== 'account' || earnedBadges.length > 0) return;
@@ -88,6 +90,43 @@ export function UserSettingsModal({
       .then((result) => setBlocked(result.friends.blocked))
       .catch(() => undefined);
   }, []);
+
+  const uploadBannerFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.push('Yalnızca görsel dosyası yükleyebilirsiniz.', 'error');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.push('Banner en fazla 8 MB olabilir.', 'error');
+      return;
+    }
+    setBannerBusy(true);
+    try {
+      const result = await usersApi.uploadBanner(file);
+      setBannerUrl(result.bannerUrl);
+      onSaved({ ...me, bannerUrl: result.bannerUrl });
+      toast.push('Banner görseli güncellendi.', 'success');
+    } catch (err) {
+      toast.push(err instanceof ApiFailure ? err.message : 'Banner yüklenemedi.', 'error');
+    } finally {
+      setBannerBusy(false);
+    }
+  };
+
+  const clearBanner = async () => {
+    setBannerBusy(true);
+    try {
+      await usersApi.removeBanner();
+      setBannerUrl(null);
+      onSaved({ ...me, bannerUrl: null });
+      toast.push('Banner görseli kaldırıldı.', 'success');
+    } catch (err) {
+      toast.push(err instanceof ApiFailure ? err.message : 'Banner kaldırılamadı.', 'error');
+    } finally {
+      setBannerBusy(false);
+    }
+  };
 
   const saveAccount = async () => {
     setBusy(true);
@@ -256,7 +295,11 @@ export function UserSettingsModal({
                 <label>Profil banner'ı</label>
                 <div
                   className="banner-preview"
-                  style={{ background: `linear-gradient(135deg, ${bannerColor}, ${bannerColor}99 60%, #7c5cff55)` }}
+                  style={
+                    bannerUrl
+                      ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : { background: `linear-gradient(135deg, ${bannerColor}, ${bannerColor}99 60%, #7c5cff55)` }
+                  }
                 >
                   <Avatar user={{ ...me, displayName }} size={56} />
                 </div>
@@ -283,6 +326,28 @@ export function UserSettingsModal({
                   </label>
                 </div>
                 <div className="hint">Banner rengi profil kartınızın üst şeridinde görünür.</div>
+                <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                    <Icon name="plus" size={14} />
+                    {bannerBusy ? 'Yükleniyor…' : 'Banner görseli yükle'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      aria-label="Banner görseli yükle"
+                      onChange={(event) => {
+                        void uploadBannerFile(event.target.files?.[0]);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {bannerUrl ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void clearBanner()} disabled={bannerBusy}>
+                      Görseli kaldır
+                    </button>
+                  ) : null}
+                </div>
+                <div className="hint">Görsel yüklerseniz renk şeridi yerine bu görsel gösterilir (en fazla 8 MB).</div>
               </div>
               <div className="field">
                 <label>
@@ -345,6 +410,60 @@ export function UserSettingsModal({
                   </button>
                 </div>
               </div>
+              <div className="field">
+                <label>Vurgu rengi</label>
+                <div className="swatch-row">
+                  {['#7c5cff', '#4f7dff', '#22d3ee', '#f472b6', '#34d399', '#fbbf24'].map((accent) => (
+                    <button
+                      key={accent}
+                      type="button"
+                      className={`swatch${settings.accentColor?.toLowerCase() === accent ? ' active' : ''}`}
+                      style={{ background: accent }}
+                      title={accent}
+                      aria-label={`Vurgu rengi ${accent}`}
+                      onClick={() => saveSettings({ accentColor: accent })}
+                    />
+                  ))}
+                  <label className="swatch swatch-custom" title="Özel vurgu rengi">
+                    <Icon name="plus" size={13} />
+                    <input
+                      type="color"
+                      value={settings.accentColor ?? '#7c5cff'}
+                      aria-label="Özel vurgu rengi"
+                      onChange={(event) => saveSettings({ accentColor: event.target.value })}
+                    />
+                  </label>
+                </div>
+                <div className="hint">Düğmeler, bağlantılar ve vurgu çizgileri bu rengi kullanır.</div>
+              </div>
+              <div className="field">
+                <label>Mesaj yoğunluğu</label>
+                <div className="row">
+                  <button
+                    type="button"
+                    className={`btn ${settings.messageDensity === 'cozy' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => saveSettings({ messageDensity: 'cozy' })}
+                  >
+                    Rahat
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${settings.messageDensity === 'compact' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => saveSettings({ messageDensity: 'compact' })}
+                  >
+                    Kompakt
+                  </button>
+                </div>
+              </div>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={settings.compactMode}
+                  onChange={(event) => saveSettings({ compactMode: event.target.checked })}
+                />
+                <span className="track" />
+                <span style={{ fontSize: 13.5 }}>Kompakt mod (daha küçük yazı ve dar boşluklar)</span>
+              </label>
               <div className="field">
                 <label>Ses efektleri</label>
                 <label className="switch">
