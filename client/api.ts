@@ -53,14 +53,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (!response.ok) {
-    const data = (payload ?? {}) as { error?: unknown; message?: unknown; code?: string; details?: Record<string, string> };
+    const data = (payload ?? {}) as {
+      error?: unknown;
+      message?: unknown;
+      code?: string;
+      details?: Record<string, string>;
+    };
+    // Sunucu hataları { error: { message, code, details } } biçiminde döner; düz metin de desteklenir.
+    const nested = (typeof data.error === 'object' && data.error !== null ? data.error : null) as {
+      message?: unknown;
+      code?: unknown;
+      details?: Record<string, string>;
+    } | null;
     const message =
-      typeof data.error === 'string'
-        ? data.error
-        : typeof data.message === 'string'
-          ? data.message
-          : `İstek başarısız oldu (${response.status}).`;
-    throw new ApiFailure(message, response.status, data.code, data.details);
+      typeof nested?.message === 'string'
+        ? nested.message
+        : typeof data.error === 'string'
+          ? data.error
+          : typeof data.message === 'string'
+            ? data.message
+            : `İstek başarısız oldu (${response.status}).`;
+    const code = typeof nested?.code === 'string' ? nested.code : data.code;
+    const details = nested?.details ?? data.details;
+    throw new ApiFailure(message, response.status, code, details);
   }
 
   return (payload ?? {}) as T;
