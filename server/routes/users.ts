@@ -7,6 +7,8 @@ import { ApiError } from '../permissions';
 import { emitToServer, getIo } from '../realtime';
 import { color, oneOf, optionalStr, str } from '../validate';
 import { publicUser } from '../serialize';
+import { computeBadges, sanitizeFeatured } from '../badges';
+import { resolveBadges } from '../../shared/badges';
 import { saveFile, upload } from '../storage';
 
 const router = Router();
@@ -43,6 +45,14 @@ router.patch('/me', (req, res) => {
     fields.push('theme = ?');
     values.push(oneOf(body.theme, ['dark', 'light'] as const, 'Tema'));
   }
+  if (body.bannerColor !== undefined) {
+    fields.push('banner_color = ?');
+    values.push(color(body.bannerColor, 'Banner rengi'));
+  }
+  if (body.featuredBadges !== undefined) {
+    fields.push('featured_badges = ?');
+    values.push(sanitizeFeatured(req.user!.id, body.featuredBadges).join(','));
+  }
   if (body.status !== undefined) {
     const status = oneOf(body.status, STATUSES, 'Durum');
     fields.push('status = ?');
@@ -67,6 +77,8 @@ type ProfilePatch = {
   customStatus?: string;
   theme?: 'dark' | 'light';
   status?: 'online' | 'idle' | 'dnd' | 'offline' | 'invisible';
+  bannerColor?: string;
+  featuredBadges?: string[];
 };
 
 function mapPatch(user: { status: string; customStatus: string }, body: Record<string, unknown>): ProfilePatch {
@@ -76,6 +88,10 @@ function mapPatch(user: { status: string; customStatus: string }, body: Record<s
   if (body.avatarColor !== undefined) patch.avatarColor = String(body.avatarColor);
   if (body.customStatus !== undefined) patch.customStatus = String(body.customStatus);
   if (body.theme !== undefined) patch.theme = body.theme === 'light' ? 'light' : 'dark';
+  if (body.bannerColor !== undefined) patch.bannerColor = String(body.bannerColor);
+  if (body.featuredBadges !== undefined) {
+    patch.featuredBadges = Array.isArray(body.featuredBadges) ? body.featuredBadges.map(String) : [];
+  }
   if (body.status !== undefined) patch.status = String(body.status) as ProfilePatch['status'];
   return patch;
 }
