@@ -13,7 +13,8 @@ import type {
   ServerDetail,
   UserStatus,
 } from '@shared/types';
-import { ApiFailure, authApi, discoverApi, serversApi, socialApi } from './api';
+import { ApiFailure, authApi, channelsApi, discoverApi, serversApi, socialApi } from './api';
+import { PERMISSIONS, hasPermission } from '@shared/permissions';
 import { Avatar, EmptyState, Icon, Modal, Spinner, ToastProvider, relative, useToast } from './ui';
 import Chat from './Chat';
 import FriendsView, { DiscoverView } from './Friends';
@@ -376,6 +377,75 @@ function CreateServerModal({
 
 /* ---------------------------------- davet modalı ------------------------------ */
 
+/** Kanal oluşturma penceresi: metin, sesli veya forum kanalı. */
+function ChannelCreateModal({
+  serverId,
+  onClose,
+  onCreated,
+}: {
+  serverId: string;
+  onClose: () => void;
+  onCreated: (channel: Channel) => Promise<void>;
+}) {
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [type, setType] = useState<'text' | 'voice' | 'forum'>('text');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const clean = name.trim();
+    if (!clean || busy) return;
+    setBusy(true);
+    try {
+      const { channel } = await channelsApi.create(serverId, {
+        name: type === 'voice' ? clean : clean.toLocaleLowerCase('tr').replace(/\s+/g, '-'),
+        type,
+        isPrivate,
+      });
+      toast.push('Kanal oluşturuldu.', 'success');
+      await onCreated(channel);
+    } catch (err) {
+      toast.push(err instanceof ApiFailure ? err.message : 'Kanal oluşturulamadı.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Kanal oluştur">
+      <form onSubmit={submit} className="stack">
+        <label className="field">
+          <span>Kanal adı</span>
+          <input
+            autoFocus
+            value={name}
+            maxLength={40}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="yeni-kanal"
+          />
+        </label>
+        <label className="field">
+          <span>Kanal türü</span>
+          <select value={type} onChange={(event) => setType(event.target.value as 'text' | 'voice' | 'forum')}>
+            <option value="text">Metin kanalı</option>
+            <option value="voice">Sesli kanal</option>
+            <option value="forum">Forum kanalı</option>
+          </select>
+        </label>
+        <label className="row" style={{ gap: 10, alignItems: 'center' }}>
+          <input type="checkbox" checked={isPrivate} onChange={(event) => setIsPrivate(event.target.checked)} />
+          <span>Özel kanal (yalnızca yetkili üyeler görür)</span>
+        </label>
+        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !name.trim()}>
+          {busy ? 'Oluşturuluyor…' : 'Kanal oluştur'}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
 /** Hiç topluluğu olmayan yeni hesaplar için başlangıç ekranı. */
 function OnboardingView({
   name,
@@ -541,6 +611,9 @@ function Shell() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(true);
   const landedRef = useRef(false);
+  const [channelCreateOpen, setChannelCreateOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
   const [navOpen, setNavOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const activeRef = useRef<{ channelId: string | null; dmId: string | null }>({ channelId: null, dmId: null });
@@ -607,6 +680,20 @@ function Shell() {
     const channel = first.channels.find((item) => item.type !== 'voice');
     setChannelId(channel?.id ?? null);
   }, [boot]);
+
+  // Ctrl/Cmd + K ile hızlı geçiş paleti.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      } else if (event.key === 'Escape') {
+        setPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const userId = boot?.user.id ?? null;
 
@@ -855,6 +942,15 @@ function Shell() {
         <button
           type="button"
           className="rail-btn"
+          aria-label="Hızlı geçiş"
+          title="Hızlı geçiş (Ctrl+K)"
+          onClick={() => setPaletteOpen(true)}
+        >
+          <Icon name="search" size={20} />
+        </button>
+        <button
+          type="button"
+          className="rail-btn"
           aria-label="Arkadaşlar ve özel mesajlar"
           aria-current={view === 'friends' || view === 'dm' ? 'page' : undefined}
           onClick={() => {
@@ -971,6 +1067,17 @@ function Shell() {
                 </div>
               ))}
               {grouped.length === 0 ? <p className="hint">Bu toplulukta henüz kanal yok.</p> : null}
+              {hasPermission(activeServer.myPermissions, PERMISSIONS.MANAGE_CHANNELS) ? (
+                <button
+                  type="button"
+                  className="channel-row"
+                  aria-label="Kanal oluştur"
+                  onClick={() => setChannelCreateOpen(true)}
+                >
+                  <Icon name="plus" size={16} />
+                  <span style={{ flex: 1 }}>Kanal oluştur</span>
+                </button>
+              ) : null}
             </div>
           </>
         ) : (
@@ -1282,6 +1389,91 @@ function Shell() {
             setJoinOpen(false);
             await refresh();
             openServer(joinedId);
+          }}
+        />
+      ) : null}
+
+      {paletteOpen ? (
+        <div className="palette-overlay" role="dialog" aria-label="Hızlı geçiş" onClick={() => setPaletteOpen(false)}>
+          <div className="palette" onClick={(event) => event.stopPropagation()}>
+            <input
+              className="palette-input"
+              autoFocus
+              aria-label="Hızlı geçiş araması"
+              placeholder="Kanal, topluluk veya sohbet ara…"
+              value={paletteQuery}
+              onChange={(event) => setPaletteQuery(event.target.value)}
+            />
+            <div className="palette-list">
+              {(() => {
+                const needle = paletteQuery.trim().toLocaleLowerCase('tr');
+                const items: { id: string; label: string; hint: string; icon: 'hash' | 'compass' | 'users'; run: () => void }[] =
+                  [];
+                for (const server of boot.servers) {
+                  items.push({
+                    id: `srv:${server.id}`,
+                    label: server.name,
+                    hint: 'Topluluk',
+                    icon: 'compass',
+                    run: () => openServer(server.id),
+                  });
+                  for (const channel of server.channels) {
+                    if (channel.type === 'voice') continue;
+                    items.push({
+                      id: `chn:${channel.id}`,
+                      label: `#${channel.name}`,
+                      hint: server.name,
+                      icon: 'hash',
+                      run: () => openChannel(server.id, channel.id),
+                    });
+                  }
+                }
+                for (const dm of boot.dms) {
+                  const label =
+                    dm.name ??
+                    dm.members
+                      .filter((member) => member.id !== me.id)
+                      .map((member) => member.displayName)
+                      .join(', ') ||
+                    'Grup sohbeti';
+                  items.push({ id: `dm:${dm.id}`, label, hint: 'Özel mesaj', icon: 'users', run: () => openDm(dm.id) });
+                }
+                const filtered = needle
+                  ? items.filter((item) => `${item.label} ${item.hint}`.toLocaleLowerCase('tr').includes(needle))
+                  : items;
+                if (filtered.length === 0) return <p className="hint" style={{ padding: '10px 14px' }}>Sonuç yok.</p>;
+                return filtered.slice(0, 8).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="palette-item"
+                    onClick={() => {
+                      item.run();
+                      setPaletteOpen(false);
+                      setPaletteQuery('');
+                    }}
+                  >
+                    <Icon name={item.icon} size={16} />
+                    <span className="truncate" style={{ flex: 1 }}>
+                      {item.label}
+                    </span>
+                    <span className="hint">{item.hint}</span>
+                  </button>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {channelCreateOpen && activeServer ? (
+        <ChannelCreateModal
+          serverId={activeServer.id}
+          onClose={() => setChannelCreateOpen(false)}
+          onCreated={async (channel) => {
+            setChannelCreateOpen(false);
+            await refresh();
+            if (channel.type !== 'voice') openChannel(activeServer.id, channel.id);
           }}
         />
       ) : null}
