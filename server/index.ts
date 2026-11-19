@@ -8,6 +8,7 @@ import { cleanupSessions, requireAuth } from './auth';
 import { initRealtime } from './realtime';
 import { buildBootstrap } from './bootstrap';
 import { ApiError } from './permissions';
+import { isPrivateAddress } from './rateLimit';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import serverRoutes from './routes/servers';
@@ -19,7 +20,8 @@ runMigrations();
 
 const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+// Cloudflare + nginx arkasında: yalnızca özel/loopback atlamalara güven.
+app.set('trust proxy', (ip: string) => isPrivateAddress(ip));
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
