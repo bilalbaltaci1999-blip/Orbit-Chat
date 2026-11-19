@@ -256,5 +256,7 @@ export const discoverApi = {
   search: (q: string) => api.get<{ servers: (ServerDetail | { id: string; name: string; description: string; iconColor: string; memberCount: number; isPublic: boolean })[] }>(`/discover?q=${encodeURIComponent(q)}`),
   invite: (code: string) => api.get<{ invite: InvitePreview }>(`/invites/${encodeURIComponent(code)}`),
   join: (code: string) => api.post<{ server: ServerDetail }>(`/invites/${encodeURIComponent(code)}/join`),
+  joinServer: (serverId: string) =>
+    api.post<{ ok: boolean; serverId: string }>(`/discover/${encodeURIComponent(serverId)}/join`),
   events: () => api.get<{ events: ServerEvent[] }>('/events'),
 };
