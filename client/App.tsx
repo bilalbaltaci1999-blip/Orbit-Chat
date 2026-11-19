@@ -19,6 +19,7 @@ import Chat from './Chat';
 import FriendsView, { DiscoverView } from './Friends';
 import VoiceRoom from './Voice';
 import { ServerSettingsModal, UserSettingsModal } from './Settings';
+import { ProfileCard } from './Profile';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 type View = 'server' | 'dm' | 'friends' | 'discover';
@@ -295,112 +296,22 @@ function ProfileModal({
   onClose,
   onStartDm,
   onChanged,
+  onOpenSettings,
 }: {
   userId: string;
   onClose: () => void;
   onStartDm: (userId: string) => void;
   onChanged: () => Promise<void>;
+  onOpenSettings?: () => void;
 }) {
-  const toast = useToast();
-  const [data, setData] = useState<{ user: PublicUser; friendship: { status: string; requestId: string | null } } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    usersApi
-      .profile(userId)
-      .then((result) => {
-        if (alive) setData(result);
-      })
-      .catch(() => toast.push('Profil yüklenemedi.', 'error'));
-    return () => {
-      alive = false;
-    };
-  }, [userId]);
-
-  const act = async (action: 'friend' | 'block') => {
-    if (!data) return;
-    setBusy(true);
-    try {
-      if (action === 'friend') {
-        await socialApi.sendRequest(data.user.username);
-        toast.push('Arkadaşlık isteği gönderildi.', 'success');
-      } else {
-        await socialApi.block(data.user.id);
-        toast.push('Kullanıcı engellendi.', 'success');
-      }
-      await onChanged();
-    } catch (err) {
-      toast.push(err instanceof ApiFailure ? err.message : 'İşlem tamamlanamadı.', 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <Modal title="Profil" onClose={onClose}>
-      {!data ? (
-        <Spinner label="Profil yükleniyor…" />
-      ) : (
-        <div className="stack">
-          <div className="row" style={{ gap: 14 }}>
-            <Avatar user={data.user} size={64} showStatus />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{data.user.displayName}</div>
-              <div className="muted">@{data.user.username}</div>
-              <div className="muted" style={{ fontSize: 12 }}>
-                {new Date(data.user.createdAt).toLocaleDateString('tr-TR')} tarihinde katıldı
-              </div>
-            </div>
-          </div>
-          {data.user.customStatus ? <div className="chip">{data.user.customStatus}</div> : null}
-          <div>
-            <div className="sidebar-label">Hakkında</div>
-            <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{data.user.bio || 'Henüz bir açıklama yok.'}</p>
-          </div>
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => onStartDm(data.user.id)}>
-              <Icon name="message" size={15} /> Mesaj gönder
-            </button>
-            {data.friendship.status === 'friends' ? (
-              <span className="chip">Arkadaşsınız</span>
-            ) : data.friendship.status === 'outgoing' ? (
-              <span className="chip">İstek gönderildi</span>
-            ) : data.friendship.status === 'incoming' ? (
-              <button
-                type="button"
-                className="btn btn-sm"
-                disabled={busy}
-                onClick={async () => {
-                  if (!data.friendship.requestId) return;
-                  setBusy(true);
-                  try {
-                    await socialApi.accept(data.friendship.requestId);
-                    toast.push('Arkadaşlık isteği kabul edildi.', 'success');
-                    await onChanged();
-                  } catch {
-                    toast.push('İstek kabul edilemedi.', 'error');
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                İsteği kabul et
-              </button>
-            ) : data.friendship.status === 'blocked' ? (
-              <span className="chip">Engellendi</span>
-            ) : (
-              <button type="button" className="btn btn-sm" disabled={busy} onClick={() => act('friend')}>
-                <Icon name="plus" size={15} /> Arkadaş ekle
-              </button>
-            )}
-            <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => act('block')}>
-              <Icon name="ban" size={15} /> Engelle
-            </button>
-          </div>
-        </div>
-      )}
-    </Modal>
+    <ProfileCard
+      userId={userId}
+      onClose={onClose}
+      onStartDm={onStartDm}
+      onChanged={onChanged}
+      onOpenSettings={onOpenSettings}
+    />
   );
 }
 
@@ -1250,6 +1161,10 @@ function Shell() {
             await startDm(targetId);
           }}
           onChanged={refresh}
+          onOpenSettings={() => {
+            setProfileId(null);
+            setSettingsOpen(true);
+          }}
         />
       ) : null}
 
