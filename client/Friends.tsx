@@ -337,8 +337,8 @@ export function DiscoverView({ onJoined, onBack }: DiscoverProps) {
     setBusy(true);
     try {
       const result = await discoverApi.joinServer(serverId);
-      toast.push(`${result.server.name} sunucusuna katıldınız.`, 'success');
-      await onJoined(result.server.id);
+      toast.push('Topluluğa katıldınız.', 'success');
+      await onJoined(result.serverId);
     } catch (err) {
       toast.push(err instanceof ApiFailure ? err.message : 'Sunucuya katılınamadı.', 'error');
     } finally {

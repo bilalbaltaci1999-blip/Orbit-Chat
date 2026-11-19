@@ -351,7 +351,7 @@ export default function Chat({
   const typingNames = Object.values(typing).map((t) => t.name);
   const headerTitle = isChannel
     ? `${scope.channel.type === 'voice' ? '🔊' : scope.channel.type === 'forum' ? '💬' : '#'} ${scope.channel.name}`
-    : scope.dm.name ?? scope.dm.members.filter((m) => m.id !== me.id).map((m) => m.displayName).join(', ') || 'Grup sohbeti';
+    : (scope.dm.name ?? scope.dm.members.filter((m) => m.id !== me.id).map((m) => m.displayName).join(', ')) || 'Grup sohbeti';
 
   const renderPoll = (poll: Poll) => (
     <div className="poll">

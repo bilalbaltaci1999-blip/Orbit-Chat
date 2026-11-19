@@ -198,7 +198,7 @@ export const channelsApi = {
     channelId: string,
     patch: { name?: string; topic?: string; slowmodeSeconds?: number; isPrivate?: boolean; categoryId?: string | null; position?: number },
   ) => api.patch<{ channel: Channel }>(`/channels/${channelId}`, patch),
-  remove: (channelId: string) => api.del<{ ok: boolean }>(`/channels/${channelId}`),
+  deleteChannel: (channelId: string) => api.del<{ ok: boolean }>(`/channels/${channelId}`),
   overwrites: (channelId: string, overwrites: { targetType: 'role' | 'member'; targetId: string; allow: number; deny: number }[]) =>
     api.put<{ ok: boolean }>(`/channels/${channelId}/overwrites`, { overwrites }),
   markRead: (channelId: string) => api.post<{ ok: boolean }>(`/channels/${channelId}/read`),

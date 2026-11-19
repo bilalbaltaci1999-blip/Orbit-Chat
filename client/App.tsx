@@ -480,10 +480,10 @@ function InviteModal({
             event.preventDefault();
             setBusy(true);
             try {
-              const preview = await discoverApi.invite(code.trim());
-              await discoverApi.join(preview.code);
-              toast.push(`${preview.server.name} topluluğuna katıldınız.`, 'success');
-              await onJoined(preview.server.id);
+              const result = await discoverApi.invite(code.trim());
+              await discoverApi.join(result.invite.code);
+              toast.push(`${result.invite.server.name} topluluğuna katıldınız.`, 'success');
+              await onJoined(result.invite.server.id);
             } catch (err) {
               toast.push(err instanceof ApiFailure ? err.message : 'Davet geçersiz.', 'error');
             } finally {
@@ -974,7 +974,7 @@ function Shell() {
                   >
                     <Avatar
                       user={{
-                        displayName: dm.name ?? dm.members.map((member) => member.displayName).join(', ') || 'Grup',
+                        displayName: dm.name ?? (dm.members.map((member) => member.displayName).join(', ') || 'Grup'),
                         avatarColor: dm.iconColor,
                         avatarUrl: dm.members.find((member) => member.id !== me.id)?.avatarUrl ?? null,
                         status: online[dm.members.find((member) => member.id !== me.id)?.id ?? ''],
@@ -983,7 +983,7 @@ function Shell() {
                       showStatus={dm.type === 'direct'}
                     />
                     <span className="truncate" style={{ flex: 1 }}>
-                      {dm.name ?? dm.members.filter((member) => member.id !== me.id).map((member) => member.displayName).join(', ') ||
+                      {(dm.name ?? dm.members.filter((member) => member.id !== me.id).map((member) => member.displayName).join(', ')) ||
                         'Grup sohbeti'}
                     </span>
                     {(unread[dm.id] ?? dm.unread) > 0 ? <span className="badge">{unread[dm.id] ?? dm.unread}</span> : null}
