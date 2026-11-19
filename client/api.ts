@@ -1,5 +1,6 @@
 /** ORBIT API istemcisi — çerez tabanlı oturum, hata normalizasyonu, dosya yükleme. */
 import type {
+  Badge,
   Bootstrap,
   Channel,
   DmChannel,
