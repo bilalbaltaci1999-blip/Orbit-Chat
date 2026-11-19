@@ -376,6 +376,48 @@ function CreateServerModal({
 
 /* ---------------------------------- davet modalı ------------------------------ */
 
+/** Hiç topluluğu olmayan yeni hesaplar için başlangıç ekranı. */
+function OnboardingView({
+  name,
+  onCreate,
+  onDiscover,
+  onJoin,
+}: {
+  name: string;
+  onCreate: () => void;
+  onDiscover: () => void;
+  onJoin: () => void;
+}) {
+  return (
+    <div className="onboarding">
+      <div className="onboarding-card">
+        <span className="onboarding-badge">ORBIT</span>
+        <h2>Hoş geldin, {name}</h2>
+        <p className="muted">
+          Sohbete başlamak için bir topluluğa katıl veya kendi topluluğunu oluştur. Arkadaş ekleyip özel mesaj da
+          gönderebilirsin.
+        </p>
+        <div className="onboarding-actions">
+          <button type="button" className="btn btn-primary" onClick={onCreate}>
+            <Icon name="plus" size={16} /> Topluluk oluştur
+          </button>
+          <button type="button" className="btn" onClick={onDiscover}>
+            <Icon name="compass" size={16} /> Topluluk keşfet
+          </button>
+          <button type="button" className="btn" onClick={onJoin}>
+            <Icon name="link" size={16} /> Davet koduyla katıl
+          </button>
+        </div>
+        <ul className="onboarding-list">
+          <li>Metin, sesli ve forum kanalları</li>
+          <li>Özel mesaj, arkadaşlık ve bildirimler</li>
+          <li>Roller, moderasyon ve davetler</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function InviteModal({
   server,
   onClose,
@@ -1052,6 +1094,13 @@ function Shell() {
             }}
             onBack={() => setView('friends')}
           />
+        ) : view === 'friends' && boot.servers.length === 0 ? (
+          <OnboardingView
+            name={me.displayName}
+            onCreate={() => setCreateOpen(true)}
+            onDiscover={() => setView('discover')}
+            onJoin={() => setJoinOpen(true)}
+          />
         ) : view === 'friends' ? (
           <FriendsView
             me={me}
@@ -1164,6 +1213,77 @@ function Shell() {
           </div>
         ) : null}
       </main>
+
+      {view === 'server' && activeServer && membersOpen ? (
+        <aside className="members" aria-label="Üye listesi">
+          <div className="members-head">
+            <strong>Üyeler — {activeServer.members.length}</strong>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Üye listesini kapat"
+              onClick={() => setMembersOpen(false)}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+          <div className="members-body">
+            {[...activeServer.members]
+              .sort((a, b) => {
+                const rank = (value: string) => (value === 'offline' ? 2 : value === 'dnd' ? 1 : 0);
+                const diff = rank(online[a.userId] ?? a.status) - rank(online[b.userId] ?? b.status);
+                return diff !== 0 ? diff : (a.nickname ?? a.displayName).localeCompare(b.nickname ?? b.displayName);
+              })
+              .map((member) => {
+                const role = [...activeServer.roles]
+                  .filter((item) => member.roleIds.includes(item.id))
+                  .sort((a, b) => b.position - a.position)[0];
+                const liveStatus = online[member.userId] ?? member.status;
+                return (
+                  <button
+                    key={member.userId}
+                    type="button"
+                    className="member-row"
+                    onClick={() => setProfileId(member.userId)}
+                    aria-label={`${member.nickname ?? member.displayName} profili`}
+                  >
+                    <Avatar
+                      user={{
+                        displayName: member.nickname ?? member.displayName,
+                        avatarColor: member.avatarColor,
+                        avatarUrl: member.avatarUrl,
+                        status: liveStatus,
+                      }}
+                      size={30}
+                      showStatus
+                    />
+                    <span className="member-meta">
+                      <span className="member-name">{member.nickname ?? member.displayName}</span>
+                      {member.customStatus ? <span className="member-sub">{member.customStatus}</span> : null}
+                    </span>
+                    {role && !role.isDefault ? (
+                      <span className="role-chip" style={{ color: role.color }}>
+                        {role.name}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+          </div>
+        </aside>
+      ) : null}
+
+      {joinOpen ? (
+        <InviteModal
+          server={null}
+          onClose={() => setJoinOpen(false)}
+          onJoined={async (joinedId) => {
+            setJoinOpen(false);
+            await refresh();
+            openServer(joinedId);
+          }}
+        />
+      ) : null}
 
       {createOpen ? (
         <CreateServerModal
