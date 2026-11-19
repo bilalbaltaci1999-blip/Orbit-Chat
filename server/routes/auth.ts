@@ -23,6 +23,7 @@ import { clientIp, rateLimit } from '../rateLimit';
 import { email as vEmail, optionalStr, password as vPassword, str, username as vUsername } from '../validate';
 import { sendMail, mailConfigured } from '../mailer';
 import { publicUser } from '../serialize';
+import { createStarterServer } from '../starter';
 
 const router = Router();
 
@@ -67,6 +68,13 @@ router.post(
       db.prepare('INSERT INTO user_settings (user_id) VALUES (?)').run(id);
     });
     tx();
+
+    // Yeni hesap boş bir ekranla kalmasın: çalışan bir başlangıç topluluğu kur.
+    try {
+      createStarterServer(id, displayName);
+    } catch {
+      /* başlangıç topluluğu oluşturlamazsa kayıt yine de tamamlanır */
+    }
 
     const row = getUserRowById(id);
     if (!row) throw new ApiError(500, 'Hesap oluşturulamadı.');
