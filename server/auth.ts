@@ -23,12 +23,16 @@ export interface AuthUser {
   theme: 'dark' | 'light';
   createdAt: number;
   bannerColor: string;
+  bannerUrl: string | null;
   featuredBadges: string[];
   settings: {
     dmPrivacy: 'everyone' | 'friends';
     notificationsEnabled: boolean;
     soundsEnabled: boolean;
     pushEnabled: boolean;
+    accentColor: string;
+    compactMode: boolean;
+    messageDensity: 'cozy' | 'compact';
   };
 }
 
@@ -102,6 +106,7 @@ interface UserRow {
   password_hash: string;
   created_at: number;
   banner_color?: string | null;
+  banner_url?: string | null;
   featured_badges?: string | null;
 }
 
@@ -110,6 +115,9 @@ interface SettingsRow {
   notifications_enabled: number;
   sounds_enabled: number;
   push_enabled: number;
+  accent_color?: string | null;
+  compact_mode?: number | null;
+  message_density?: string | null;
 }
 
 const selectUser = db.prepare('SELECT * FROM users WHERE id = ?');
@@ -131,6 +139,7 @@ export function toAuthUser(row: UserRow): AuthUser {
     theme: row.theme,
     createdAt: row.created_at,
     bannerColor: row.banner_color ?? DEFAULT_BANNER,
+    bannerUrl: row.banner_url ?? null,
     featuredBadges: (row.featured_badges ?? '')
       .split(',')
       .map((value) => value.trim())
@@ -140,6 +149,9 @@ export function toAuthUser(row: UserRow): AuthUser {
       notificationsEnabled: Boolean(settings?.notifications_enabled ?? 1),
       soundsEnabled: Boolean(settings?.sounds_enabled ?? 1),
       pushEnabled: Boolean(settings?.push_enabled ?? 1),
+      accentColor: settings?.accent_color ?? '#7c5cff',
+      compactMode: Boolean(settings?.compact_mode ?? 0),
+      messageDensity: settings?.message_density === 'compact' ? 'compact' : 'cozy',
     },
   };
 }

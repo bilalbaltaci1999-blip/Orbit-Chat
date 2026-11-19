@@ -33,6 +33,7 @@ export function meUser(user: AuthUser): MeUser {
     customStatus: user.customStatus,
     createdAt: user.createdAt,
     bannerColor: user.bannerColor,
+    bannerUrl: user.bannerUrl,
     featuredBadges: user.featuredBadges,
     email: user.email,
     theme: user.theme,

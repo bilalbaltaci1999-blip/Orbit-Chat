@@ -421,6 +421,18 @@ CREATE INDEX IF NOT EXISTS idx_user_notes_target ON user_notes(target_id);
 `,
 });
 
+/* Profil banner görseli ve görünüm tercihleri (vurgu rengi, kompakt mod). */
+migrations.push({
+  id: 4,
+  name: 'profile_banner_image_and_appearance',
+  sql: `
+ALTER TABLE users ADD COLUMN banner_url TEXT;
+ALTER TABLE user_settings ADD COLUMN accent_color TEXT NOT NULL DEFAULT '#7c5cff';
+ALTER TABLE user_settings ADD COLUMN compact_mode INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE user_settings ADD COLUMN message_density TEXT NOT NULL DEFAULT 'cozy';
+`,
+});
+
 export function runMigrations(): void {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     id INTEGER PRIMARY KEY,

@@ -32,10 +32,11 @@ interface UserRow {
   custom_status: string;
   created_at: number;
   banner_color?: string | null;
+  banner_url?: string | null;
 }
 
 const qUser = db.prepare(
-  'SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at FROM users WHERE id = ?',
+  'SELECT id, username, display_name, avatar_color, avatar_url, bio, status, custom_status, created_at, banner_color, banner_url FROM users WHERE id = ?',
 );
 
 export function publicUser(row: UserRow | null | undefined): PublicUser | null {
@@ -51,6 +52,7 @@ export function publicUser(row: UserRow | null | undefined): PublicUser | null {
     customStatus: row.custom_status,
     createdAt: row.created_at,
     bannerColor: row.banner_color ?? DEFAULT_BANNER,
+    bannerUrl: row.banner_url ?? null,
   };
 }
 
