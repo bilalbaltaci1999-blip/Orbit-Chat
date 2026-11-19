@@ -25,7 +25,7 @@ type View = 'server' | 'dm' | 'friends' | 'discover';
 
 /* --------------------------------- giriş ekranı ------------------------------- */
 
-function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
+function AuthScreen({ onAuthed }: { onAuthed: () => Promise<boolean> }) {
   const toast = useToast();
   const params = new URLSearchParams(window.location.search);
   const [mode, setMode] = useState<AuthMode>(params.get('reset') ? 'reset' : 'login');
@@ -38,17 +38,45 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  /** Sunucu kurallarıyla aynı doğrulama: hata mesajı gelmeden alan bazında uyarı. */
+  const validate = (): Record<string, string> => {
+    const problems: Record<string, string> = {};
+    if (mode !== 'reset' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      problems.email = 'Geçerli bir e-posta adresi girin.';
+    }
+    if (mode === 'register' && !/^[a-zA-Z0-9_.]{3,24}$/.test(username.trim())) {
+      problems.username = '3-24 karakter; harf, rakam, nokta veya alt çizgi kullanın.';
+    }
+    if ((mode === 'register' || mode === 'reset') && password.length > 0) {
+      if (password.length < 8) problems.password = 'Şifre en az 8 karakter olmalı.';
+      else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        problems.password = 'Şifre en az bir harf ve bir rakam içermeli.';
+      }
+    }
+    return problems;
+  };
+
+  const sessionProblem =
+    'İşlem tamamlandı ancak oturum tarayıcıya kaydedilemedi. Çerezleri engelleyen bir eklenti veya gizli sekme kullanıyorsanız kapatıp tekrar deneyin.';
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     setNotice(null);
     setDevResetUrl(null);
+    const problems = validate();
+    setFieldErrors(problems);
+    if (Object.keys(problems).length > 0) {
+      setError('Lütfen işaretli alanları düzeltin.');
+      return;
+    }
     setBusy(true);
     try {
       if (mode === 'login') {
         await authApi.login(email.trim(), password);
-        await onAuthed();
+        if (!(await onAuthed())) setError(sessionProblem);
       } else if (mode === 'register') {
         await authApi.register({
           email: email.trim(),
@@ -56,7 +84,7 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
           displayName: displayName.trim() || username.trim(),
           password,
         });
-        await onAuthed();
+        if (!(await onAuthed())) setError(sessionProblem);
       } else if (mode === 'forgot') {
         const result = await authApi.forgotPassword(email.trim());
         setNotice(result.message ?? 'Sıfırlama bağlantısı e-posta adresinize gönderildi.');
@@ -69,7 +97,23 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
         window.history.replaceState({}, '', window.location.pathname);
       }
     } catch (err) {
-      setError(err instanceof ApiFailure ? err.message : 'İşlem tamamlanamadı, tekrar deneyin.');
+      if (err instanceof ApiFailure) {
+        setFieldErrors(err.details ?? {});
+        if (err.code === 'EMAIL_TAKEN' && mode === 'register') {
+          setMode('login');
+          setPassword('');
+          setError(null);
+          setNotice('Bu e-posta ile bir hesap var. Şifrenizle giriş yapın veya "Şifremi unuttum" ile sıfırlayın.');
+        } else if (err.code === 'USERNAME_TAKEN' && mode === 'register') {
+          setError('Bu kullanıcı adı alınmış. Farklı bir kullanıcı adı deneyin.');
+        } else if (err.code === 'INVALID_CREDENTIALS') {
+          setError('E-posta veya şifre hatalı. Hesabınız yoksa "Hesap oluştur" sekmesinden kayıt olabilirsiniz.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('İşlem tamamlanamadı, tekrar deneyin.');
+      }
     } finally {
       setBusy(false);
     }
@@ -98,6 +142,7 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
               onClick={() => {
                 setMode('login');
                 setError(null);
+                setFieldErrors({});
               }}
             >
               Giriş yap
@@ -110,6 +155,7 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
               onClick={() => {
                 setMode('register');
                 setError(null);
+                setFieldErrors({});
               }}
             >
               Hesap oluştur
@@ -132,6 +178,8 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
                   maxLength={24}
                   required
                 />
+                <span className="hint">3-24 karakter · harf, rakam, nokta veya alt çizgi</span>
+                {fieldErrors.username ? <span className="field-error">{fieldErrors.username}</span> : null}
               </label>
               <label className="field">
                 <span>Görünen ad</span>
@@ -142,6 +190,7 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
                   placeholder="Görünen adınız"
                   maxLength={32}
                 />
+                {fieldErrors.displayName ? <span className="field-error">{fieldErrors.displayName}</span> : null}
               </label>
             </>
           ) : null}
@@ -158,6 +207,7 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
                 autoComplete="email"
                 required
               />
+              {fieldErrors.email ? <span className="field-error">{fieldErrors.email}</span> : null}
             </label>
           ) : (
             <label className="field">
@@ -179,6 +229,10 @@ function AuthScreen({ onAuthed }: { onAuthed: () => Promise<void> }) {
                 minLength={mode === 'login' ? undefined : 8}
                 required
               />
+              {mode === 'register' || mode === 'reset' ? (
+                <span className="hint">En az 8 karakter, bir harf ve bir rakam.</span>
+              ) : null}
+              {fieldErrors.password ? <span className="field-error">{fieldErrors.password}</span> : null}
             </label>
           ) : null}
 
@@ -804,7 +858,12 @@ function Shell() {
     return (
       <AuthScreen
         onAuthed={async () => {
-          await refresh();
+          try {
+            applyBoot(await authApi.bootstrap());
+            return true;
+          } catch {
+            return false;
+          }
         }}
       />
     );
