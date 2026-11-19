@@ -124,34 +124,81 @@ router.post('/me/avatar', upload.single('avatar'), (req, res) => {
   res.json({ avatarUrl: url });
 });
 
+/* Profil banner görseli: renk şeridinin yerine geçer. */
+router.post('/me/banner', upload.single('banner'), (req, res) => {
+  const file = req.file;
+  if (!file) throw new ApiError(400, 'Görsel seçilmedi.', 'NO_FILE');
+  if (!file.mimetype.startsWith('image/')) throw new ApiError(400, 'Yalnızca görsel yükleyebilirsiniz.', 'INVALID_IMAGE');
+  const stored = saveFile({
+    buffer: file.buffer,
+    originalName: file.originalname,
+    mime: file.mimetype,
+    uploaderId: req.user!.id,
+  });
+  const url = `/api/files/${stored.id}`;
+  db.prepare('UPDATE users SET banner_url = ?, updated_at = ? WHERE id = ?').run(url, now(), req.user!.id);
+  res.json({ bannerUrl: url });
+});
+
+router.delete('/me/banner', (req, res) => {
+  db.prepare('UPDATE users SET banner_url = NULL, updated_at = ? WHERE id = ?').run(now(), req.user!.id);
+  res.json({ ok: true });
+});
+
 router.patch('/me/settings', (req, res) => {
   const body = req.body ?? {};
   const current = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.user!.id) as
-    | { dm_privacy: string; notifications_enabled: number; sounds_enabled: number; push_enabled: number }
+    | {
+        dm_privacy: string;
+        notifications_enabled: number;
+        sounds_enabled: number;
+        push_enabled: number;
+        accent_color: string;
+        compact_mode: number;
+        message_density: string;
+      }
     | undefined;
   const dmPrivacy =
     body.dmPrivacy !== undefined
       ? oneOf(body.dmPrivacy, ['everyone', 'friends'] as const, 'DM gizliliği')
       : current?.dm_privacy ?? 'everyone';
+  const accentColor =
+    body.accentColor !== undefined
+      ? color(body.accentColor, 'Vurgu rengi')
+      : current?.accent_color ?? '#7c5cff';
+  const messageDensity =
+    body.messageDensity !== undefined
+      ? oneOf(body.messageDensity, ['cozy', 'compact'] as const, 'Mesaj yoğunluğu')
+      : current?.message_density === 'compact'
+        ? 'compact'
+        : 'cozy';
   const flag = (value: unknown, fallback: number) => (typeof value === 'boolean' ? (value ? 1 : 0) : fallback);
   db.prepare(
-    `INSERT INTO user_settings (user_id, dm_privacy, notifications_enabled, sounds_enabled, push_enabled)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO user_settings (user_id, dm_privacy, notifications_enabled, sounds_enabled, push_enabled, accent_color, compact_mode, message_density)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET dm_privacy = excluded.dm_privacy,
        notifications_enabled = excluded.notifications_enabled,
-       sounds_enabled = excluded.sounds_enabled, push_enabled = excluded.push_enabled`,
+       sounds_enabled = excluded.sounds_enabled, push_enabled = excluded.push_enabled,
+       accent_color = excluded.accent_color, compact_mode = excluded.compact_mode,
+       message_density = excluded.message_density`,
   ).run(
     req.user!.id,
     dmPrivacy,
     flag(body.notificationsEnabled, current?.notifications_enabled ?? 1),
     flag(body.soundsEnabled, current?.sounds_enabled ?? 1),
     flag(body.pushEnabled, current?.push_enabled ?? 1),
+    accentColor,
+    flag(body.compactMode, current?.compact_mode ?? 0),
+    messageDensity,
   );
   const row = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.user!.id) as {
     dm_privacy: string;
     notifications_enabled: number;
     sounds_enabled: number;
     push_enabled: number;
+    accent_color: string;
+    compact_mode: number;
+    message_density: string;
   };
   res.json({
     settings: {
@@ -159,6 +206,9 @@ router.patch('/me/settings', (req, res) => {
       notificationsEnabled: row.notifications_enabled === 1,
       soundsEnabled: row.sounds_enabled === 1,
       pushEnabled: row.push_enabled === 1,
+      accentColor: row.accent_color,
+      compactMode: row.compact_mode === 1,
+      messageDensity: row.message_density === 'compact' ? 'compact' : 'cozy',
     },
   });
 });

@@ -22,6 +22,8 @@ export interface PublicUser {
   createdAt: number;
   /** Profil kartının üst şerit rengi. */
   bannerColor?: string;
+  /** Yüklenmiş banner görseli (varsa renk yerine gösterilir). */
+  bannerUrl?: string | null;
   /** Kazanılmış rozet kimlikleri (sunucu tarafında hesaplanır). */
   badges?: string[];
 }
@@ -39,6 +41,12 @@ export interface UserSettings {
   notificationsEnabled: boolean;
   soundsEnabled: boolean;
   pushEnabled: boolean;
+  /** Arayüz vurgu rengi (CSS değişkeni olarak uygulanır). */
+  accentColor: string;
+  /** Kompakt mod: daha dar boşluklar ve küçük yazı. */
+  compactMode: boolean;
+  /** Mesaj listesi yoğunluğu. */
+  messageDensity: 'cozy' | 'compact';
 }
 
 export interface Role {
