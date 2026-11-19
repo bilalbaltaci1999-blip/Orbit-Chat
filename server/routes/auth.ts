@@ -19,7 +19,7 @@ import {
 import { db, newId, now } from '../db';
 import { buildBootstrap, meUser, notificationsFor } from '../bootstrap';
 import { ApiError } from '../permissions';
-import { rateLimit } from '../rateLimit';
+import { clientIp, rateLimit } from '../rateLimit';
 import { email as vEmail, optionalStr, password as vPassword, str, username as vUsername } from '../validate';
 import { sendMail, mailConfigured } from '../mailer';
 import { publicUser } from '../serialize';
@@ -36,7 +36,12 @@ function publicBase(req: { protocol: string; get(name: string): string | undefin
 
 router.post(
   '/register',
-  rateLimit({ windowMs: 60_000, max: 8, message: 'Çok fazla kayıt denemesi. Lütfen biraz bekleyin.' }),
+  rateLimit({
+    windowMs: 60_000,
+    max: 10,
+    message: 'Çok fazla kayıt denemesi. Lütfen biraz bekleyin.',
+    key: (req) => clientIp(req),
+  }),
   (req, res) => {
     const email = vEmail(req.body?.email);
     const username = vUsername(req.body?.username);
@@ -74,7 +79,18 @@ router.post(
 
 router.post(
   '/login',
-  rateLimit({ windowMs: 15 * 60_000, max: 20, message: 'Çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.' }),
+  rateLimit({
+    windowMs: 15 * 60_000,
+    max: 40,
+    message: 'Çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.',
+    key: (req) => clientIp(req),
+  }),
+  rateLimit({
+    windowMs: 15 * 60_000,
+    max: 8,
+    message: 'Bu hesap için çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.',
+    key: (req) => `${clientIp(req)}:${String(req.body?.email ?? '').trim().toLowerCase()}`,
+  }),
   (req, res) => {
     const email = vEmail(req.body?.email);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
