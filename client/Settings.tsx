@@ -11,7 +11,7 @@ import type {
   UserSettings,
 } from '@shared/types';
 import { PERMISSIONS, PERMISSION_LABELS, hasPermission, type PermissionKey } from '@shared/permissions';
-import { ApiFailure, authApi, serversApi, socialApi, usersApi } from './api';
+import { ApiFailure, authApi, channelsApi, serversApi, socialApi, usersApi } from './api';
 import { Avatar, Icon, Modal, Spinner, fullTime, relative, useToast } from './ui';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -123,7 +123,7 @@ export function UserSettingsModal({
       const registration = await navigator.serviceWorker.register('/sw.js');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyResult.publicKey),
+        applicationServerKey: urlBase64ToUint8Array(keyResult.publicKey) as unknown as BufferSource,
       });
       await socialApi.pushSubscribe(subscription.toJSON());
       await saveSettings({ pushEnabled: true });
@@ -212,7 +212,7 @@ export function UserSettingsModal({
               </div>
               <div className="field">
                 <label htmlFor="status">Durum</label>
-                <select id="status" className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <select id="status" className="select" value={status} onChange={(e) => setStatus(e.target.value as MeUser['status'])}>
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -775,7 +775,7 @@ export function ServerSettingsModal({
                       onClick={async () => {
                         if (!newChannelName.trim()) return;
                         try {
-                          await serversApi.createChannel(server.id, { name: newChannelName.trim(), type: newChannelType });
+                          await channelsApi.create(server.id, { name: newChannelName.trim(), type: newChannelType });
                           setNewChannelName('');
                           await onChanged();
                           toast.push('Kanal oluşturuldu.', 'success');
@@ -1186,5 +1186,5 @@ export function ServerSettingsModal({
 
 async function channelsDelete(channelId: string): Promise<void> {
   const { channelsApi } = await import('./api');
-  await channelsApi.remove(channelId);
+  await channelsApi.deleteChannel(channelId);
 }
