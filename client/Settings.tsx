@@ -1,6 +1,7 @@
 /** Kullanıcı ayarları (hesap, görünüm, gizlilik, güvenlik) ve sunucu ayarları. */
 import { useEffect, useState } from 'react';
 import type {
+  Badge,
   MeUser,
   ModLogEntry,
   PublicUser,
@@ -12,6 +13,7 @@ import type {
 } from '@shared/types';
 import { PERMISSIONS, PERMISSION_LABELS, hasPermission, type PermissionKey } from '@shared/permissions';
 import { ApiFailure, authApi, channelsApi, serversApi, socialApi, usersApi } from './api';
+import { BADGE_CATALOG, BANNER_PRESETS, DEFAULT_BANNER, MAX_FEATURED_BADGES } from '@shared/badges';
 import { Avatar, Icon, Modal, Spinner, fullTime, relative, useToast } from './ui';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -48,6 +50,28 @@ export function UserSettingsModal({
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [blocked, setBlocked] = useState<PublicUser[]>([]);
+  const [bannerColor, setBannerColor] = useState(me.bannerColor ?? DEFAULT_BANNER);
+  const [featuredBadges, setFeaturedBadges] = useState<string[]>(me.featuredBadges ?? []);
+  const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
+
+  useEffect(() => {
+    if (tab !== 'account' || earnedBadges.length > 0) return;
+    usersApi
+      .profile(me.id)
+      .then((result) => setEarnedBadges(result.badges ?? []))
+      .catch(() => setEarnedBadges([]));
+  }, [tab, me.id, earnedBadges.length]);
+
+  const toggleFeatured = (id: string) => {
+    setFeaturedBadges((prev) => {
+      if (prev.includes(id)) return prev.filter((value) => value !== id);
+      if (prev.length >= MAX_FEATURED_BADGES) {
+        toast.push(`En fazla ${MAX_FEATURED_BADGES} rozet seçebilirsiniz.`, 'error');
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
 
   useEffect(() => {
     if (tab === 'security' && !sessions) {
@@ -68,7 +92,15 @@ export function UserSettingsModal({
   const saveAccount = async () => {
     setBusy(true);
     try {
-      const result = await usersApi.updateMe({ displayName, username, bio, customStatus, status });
+      const result = await usersApi.updateMe({
+        displayName,
+        username,
+        bio,
+        customStatus,
+        status,
+        bannerColor,
+        featuredBadges,
+      });
       onSaved(result.user);
       toast.push('Profil güncellendi.', 'success');
     } catch (err) {
@@ -219,6 +251,77 @@ export function UserSettingsModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="field">
+                <label>Profil banner'ı</label>
+                <div
+                  className="banner-preview"
+                  style={{ background: `linear-gradient(135deg, ${bannerColor}, ${bannerColor}99 60%, #7c5cff55)` }}
+                >
+                  <Avatar user={{ ...me, displayName }} size={56} />
+                </div>
+                <div className="swatch-row">
+                  {BANNER_PRESETS.map((preset) => (
+                    <button
+                      key={preset.color}
+                      type="button"
+                      className={`swatch${bannerColor.toLowerCase() === preset.color.toLowerCase() ? ' active' : ''}`}
+                      style={{ background: preset.color }}
+                      title={preset.label}
+                      aria-label={preset.label}
+                      onClick={() => setBannerColor(preset.color)}
+                    />
+                  ))}
+                  <label className="swatch swatch-custom" title="Özel renk seç">
+                    <Icon name="plus" size={13} />
+                    <input
+                      type="color"
+                      value={bannerColor}
+                      aria-label="Özel banner rengi"
+                      onChange={(event) => setBannerColor(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="hint">Banner rengi profil kartınızın üst şeridinde görünür.</div>
+              </div>
+              <div className="field">
+                <label>
+                  Öne çıkan rozetler{' '}
+                  <span className="muted">
+                    ({featuredBadges.length}/{MAX_FEATURED_BADGES})
+                  </span>
+                </label>
+                {earnedBadges.length === 0 ? (
+                  <div className="hint">
+                    Henüz rozet yok. Sohbete katılın, arkadaş edinin veya bir topluluk yönetin.
+                  </div>
+                ) : (
+                  <div className="badge-picker">
+                    {earnedBadges.map((badge) => {
+                      const active = featuredBadges.includes(badge.id);
+                      return (
+                        <button
+                          key={badge.id}
+                          type="button"
+                          className={`badge-chip${active ? ' active' : ''}`}
+                          style={
+                            active
+                              ? { color: badge.color, borderColor: `${badge.color}66`, background: `${badge.color}1f` }
+                              : undefined
+                          }
+                          title={badge.description}
+                          onClick={() => toggleFeatured(badge.id)}
+                        >
+                          <Icon name={badge.icon} size={15} />
+                          <span className="badge-label">{badge.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="hint">
+                  Kazandığınız rozetlerden en fazla {MAX_FEATURED_BADGES} tanesini profil kartınızda öne çıkarın.
+                </div>
               </div>
               <div className="row">
                 <button type="button" className="btn btn-primary" onClick={saveAccount} disabled={busy}>
