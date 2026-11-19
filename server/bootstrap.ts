@@ -32,6 +32,8 @@ export function meUser(user: AuthUser): MeUser {
     status: user.status as MeUser['status'],
     customStatus: user.customStatus,
     createdAt: user.createdAt,
+    bannerColor: user.bannerColor,
+    featuredBadges: user.featuredBadges,
     email: user.email,
     theme: user.theme,
     settings: user.settings,

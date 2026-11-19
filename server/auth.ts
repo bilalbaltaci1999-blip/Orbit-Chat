@@ -21,6 +21,8 @@ export interface AuthUser {
   customStatus: string;
   theme: 'dark' | 'light';
   createdAt: number;
+  bannerColor: string;
+  featuredBadges: string[];
   settings: {
     dmPrivacy: 'everyone' | 'friends';
     notificationsEnabled: boolean;
@@ -98,6 +100,8 @@ interface UserRow {
   theme: 'dark' | 'light';
   password_hash: string;
   created_at: number;
+  banner_color?: string | null;
+  featured_badges?: string | null;
 }
 
 interface SettingsRow {
@@ -125,6 +129,11 @@ export function toAuthUser(row: UserRow): AuthUser {
     customStatus: row.custom_status,
     theme: row.theme,
     createdAt: row.created_at,
+    bannerColor: row.banner_color ?? DEFAULT_BANNER,
+    featuredBadges: (row.featured_badges ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
     settings: {
       dmPrivacy: settings?.dm_privacy ?? 'everyone',
       notificationsEnabled: Boolean(settings?.notifications_enabled ?? 1),
