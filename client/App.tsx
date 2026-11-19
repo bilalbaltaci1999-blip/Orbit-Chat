@@ -13,7 +13,7 @@ import type {
   ServerDetail,
   UserStatus,
 } from '@shared/types';
-import { ApiFailure, authApi, discoverApi, serversApi, socialApi, usersApi } from './api';
+import { ApiFailure, authApi, discoverApi, serversApi, socialApi } from './api';
 import { Avatar, EmptyState, Icon, Modal, Spinner, ToastProvider, relative, useToast } from './ui';
 import Chat from './Chat';
 import FriendsView, { DiscoverView } from './Friends';
