@@ -1,19 +1,32 @@
 /** Rozetleri gerçek verilerden hesaplar — elle atama yoktur. */
 import { db } from './db';
 import { BADGE_CATALOG, MAX_FEATURED_BADGES } from '../shared/badges';
+import { PERMISSIONS } from '../shared/permissions';
 
 const DAY = 24 * 60 * 60 * 1000;
 
 interface RoleRow {
-  permissions: string | null;
+  permissions: unknown;
   is_default: number;
 }
 
-/** Rol izinleri JSON dizi, virgüllü liste ya da bit alanı olarak saklanabilir. */
-function permissionKeys(raw: string | null): string[] {
-  if (!raw) return [];
+/** Bit alanından izin anahtarları üretir (roles.permissions INTEGER olarak saklanır). */
+function bitsToKeys(bits: number): string[] {
+  const keys: string[] = [];
+  for (const [key, bit] of Object.entries(PERMISSIONS)) {
+    if ((bits & bit) === bit) keys.push(key);
+  }
+  return keys;
+}
+
+/** Rol izinleri bit alanı, JSON dizi/nesne ya da virgüllü liste olarak saklanabilir. */
+function permissionKeys(raw: unknown): string[] {
+  if (raw === null || raw === undefined || raw === '') return [];
+  if (typeof raw === 'number') return Number.isFinite(raw) ? bitsToKeys(raw) : [];
+  if (typeof raw !== 'string') return [];
   const trimmed = raw.trim();
   if (!trimmed) return [];
+  if (/^\d+$/.test(trimmed)) return bitsToKeys(Number(trimmed));
   if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed) as unknown;
@@ -33,8 +46,20 @@ function permissionKeys(raw: string | null): string[] {
     .filter(Boolean);
 }
 
-const ADMIN_KEYS = ['administrator', 'manageServer', 'manage_server', 'admin'];
-const MOD_KEYS = ['manageMessages', 'manage_messages', 'kickMembers', 'kick_members', 'manageMembers', 'moderator'];
+const ADMIN_KEYS = ['ADMINISTRATOR', 'administrator', 'MANAGE_SERVER', 'manageServer', 'manage_server', 'admin'];
+const MOD_KEYS = [
+  'MANAGE_MESSAGES',
+  'manageMessages',
+  'manage_messages',
+  'KICK_MEMBERS',
+  'kickMembers',
+  'kick_members',
+  'MANAGE_MEMBERS',
+  'manageMembers',
+  'TIMEOUT_MEMBERS',
+  'VIEW_AUDIT_LOG',
+  'moderator',
+];
 
 export function computeBadges(userId: string): string[] {
   const user = db.prepare('SELECT created_at FROM users WHERE id = ?').get(userId) as
