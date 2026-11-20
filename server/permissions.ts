@@ -24,6 +24,7 @@ export interface ServerRow {
   description: string;
   icon_color: string;
   icon_url: string | null;
+  banner_url: string | null;
   owner_id: string;
   is_public: number;
   created_at: number;

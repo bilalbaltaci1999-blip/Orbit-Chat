@@ -433,6 +433,15 @@ ALTER TABLE user_settings ADD COLUMN message_density TEXT NOT NULL DEFAULT 'cozy
 `,
 });
 
+/* Sunucu kimliği: banner görseli (avatar için icon_url zaten var). */
+migrations.push({
+  id: 5,
+  name: 'server_banner_image',
+  sql: `
+ALTER TABLE servers ADD COLUMN banner_url TEXT;
+`,
+});
+
 export function runMigrations(): void {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     id INTEGER PRIMARY KEY,

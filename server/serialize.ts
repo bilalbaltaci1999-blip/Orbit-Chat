@@ -96,6 +96,7 @@ export function mapServer(row: ServerRow): Server {
     description: row.description,
     iconColor: row.icon_color,
     iconUrl: row.icon_url,
+    bannerUrl: row.banner_url ?? null,
     ownerId: row.owner_id,
     isPublic: row.is_public === 1,
     createdAt: row.created_at,
