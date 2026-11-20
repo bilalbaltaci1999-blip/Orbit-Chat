@@ -1158,6 +1158,91 @@ a {
   padding: 20px;
   overflow-y: auto;
 }
+/* Profil bölüm menüsü: uzun formu ayrı menülere böler. */
+.seg-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-m);
+}
+.seg-nav .seg {
+  flex: 1 1 auto;
+  min-width: 96px;
+  padding: 8px 12px;
+  border-radius: var(--radius-s);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.seg-nav .seg:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+.seg-nav .seg.active {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 6px 18px -10px var(--brand);
+}
+.seg-nav .seg:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.input-invalid {
+  border-color: var(--danger, #ff5c7a) !important;
+}
+.hint-error {
+  color: var(--danger, #ff5c7a);
+  font-weight: 600;
+}
+.section-title {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.whatsnew-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.whatsnew-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 14px;
+  text-align: left;
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-m);
+  color: var(--text-1);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.whatsnew-card strong {
+  font-size: 13.5px;
+}
+.whatsnew-card span {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+.whatsnew-card:hover {
+  background: var(--bg-3);
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+.whatsnew-card:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
 .settings-pane h3 {
   margin: 0 0 4px;
   font-size: 16px;

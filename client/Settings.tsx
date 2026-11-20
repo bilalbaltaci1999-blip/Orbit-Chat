@@ -129,12 +129,27 @@ export function UserSettingsModal({
     }
   };
 
+  const normalizedUsername = username.trim().toLowerCase();
+  const usernameError = /^[a-z0-9_.]{3,24}$/.test(normalizedUsername)
+    ? ''
+    : 'Kullanıcı adı 3-24 karakter olmalı; yalnızca küçük harf, sayı, nokta ve alt çizgi.';
+
   const saveAccount = async () => {
+    if (!displayName.trim()) {
+      setProfileSection('identity');
+      toast.push('Görünen ad boş olamaz.', 'error');
+      return;
+    }
+    if (usernameError) {
+      setProfileSection('identity');
+      toast.push(usernameError, 'error');
+      return;
+    }
     setBusy(true);
     try {
       const result = await usersApi.updateMe({
-        displayName,
-        username,
+        displayName: displayName.trim(),
+        username: normalizedUsername,
         bio,
         customStatus,
         status,
@@ -144,7 +159,12 @@ export function UserSettingsModal({
       onSaved(result.user);
       toast.push('Profil güncellendi.', 'success');
     } catch (err) {
-      toast.push(err instanceof ApiFailure ? err.message : 'Profil güncellenemedi.', 'error');
+      if (err instanceof ApiFailure) {
+        const detail = err.details ? Object.values(err.details)[0] : '';
+        toast.push(detail ? `${err.message} (${detail})` : err.message, 'error');
+      } else {
+        toast.push('Profil güncellenemedi.', 'error');
+      }
     } finally {
       setBusy(false);
     }
