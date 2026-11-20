@@ -37,7 +37,8 @@ export function UserSettingsModal({
   onLogout: () => void;
 }) {
   const toast = useToast();
-  const [tab, setTab] = useState<'account' | 'appearance' | 'privacy' | 'security'>('account');
+  const [tab, setTab] = useState<'account' | 'appearance' | 'whatsnew' | 'privacy' | 'security'>('account');
+  const [profileSection, setProfileSection] = useState<'identity' | 'about' | 'banner' | 'badges'>('identity');
   const [displayName, setDisplayName] = useState(me.displayName);
   const [username, setUsername] = useState(me.username);
   const [bio, setBio] = useState(me.bio);
@@ -228,6 +229,7 @@ export function UserSettingsModal({
             [
               ['account', 'Hesap'],
               ['appearance', 'Görünüm'],
+              ['whatsnew', 'Yenilikler'],
               ['privacy', 'Gizlilik ve bildirimler'],
               ['security', 'Güvenlik'],
             ] as [typeof tab, string][]
@@ -246,6 +248,28 @@ export function UserSettingsModal({
         <div className="settings-pane">
           {tab === 'account' ? (
             <>
+              <nav className="seg-nav" aria-label="Profil bölümleri">
+                {(
+                  [
+                    ['identity', 'Kimlik'],
+                    ['about', 'Hakkında ve durum'],
+                    ['banner', 'Banner'],
+                    ['badges', 'Rozetler'],
+                  ] as [typeof profileSection, string][]
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`seg${profileSection === key ? ' active' : ''}`}
+                    aria-pressed={profileSection === key}
+                    onClick={() => setProfileSection(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {profileSection === 'identity' ? (
+                <>
               <div className="row" style={{ gap: 14, alignItems: 'center' }}>
                 <Avatar user={{ ...me, displayName }} size={64} />
                 <div>
@@ -271,8 +295,23 @@ export function UserSettingsModal({
               </div>
               <div className="field">
                 <label htmlFor="username">Kullanıcı adı</label>
-                <input id="username" className="input" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={32} />
+                <input
+                  id="username"
+                  className={`input${usernameError ? ' input-invalid' : ''}`}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  maxLength={24}
+                  aria-invalid={usernameError ? true : undefined}
+                />
+                <div className={usernameError ? 'hint hint-error' : 'hint'}>
+                  {usernameError ||
+                    '3-24 karakter: küçük harf, sayı, nokta ve alt çizgi. Arkadaşlarınız sizi @ad ile bulur.'}
+                </div>
               </div>
+                </>
+              ) : null}
+              {profileSection === 'about' ? (
+                <>
               <div className="field">
                 <label htmlFor="bio">Hakkında</label>
                 <textarea id="bio" className="textarea" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={190} />
@@ -291,6 +330,10 @@ export function UserSettingsModal({
                   ))}
                 </select>
               </div>
+                </>
+              ) : null}
+              {profileSection === 'banner' ? (
+                <>
               <div className="field">
                 <label>Profil banner'ı</label>
                 <div
@@ -349,6 +392,10 @@ export function UserSettingsModal({
                 </div>
                 <div className="hint">Görsel yüklerseniz renk şeridi yerine bu görsel gösterilir (en fazla 8 MB).</div>
               </div>
+                </>
+              ) : null}
+              {profileSection === 'badges' ? (
+                <>
               <div className="field">
                 <label>
                   Öne çıkan rozetler{' '}
@@ -388,6 +435,8 @@ export function UserSettingsModal({
                   Kazandığınız rozetlerden en fazla {MAX_FEATURED_BADGES} tanesini profil kartınızda öne çıkarın.
                 </div>
               </div>
+                </>
+              ) : null}
               <div className="row">
                 <button type="button" className="btn btn-primary" onClick={saveAccount} disabled={busy}>
                   Değişiklikleri kaydet
@@ -395,6 +444,66 @@ export function UserSettingsModal({
                 <span className="hint">{me.email}</span>
               </div>
             </>
+          ) : null}
+
+          {tab === 'whatsnew' ? (
+            <div className="whatsnew">
+              <h3 className="section-title">Yeni özellikler</h3>
+              <p className="hint">
+                Son güncellemeler ayrı menülere ayrıldı. Bir karta dokunarak ilgili bölüme gidin.
+              </p>
+              <div className="whatsnew-grid">
+                <button
+                  type="button"
+                  className="whatsnew-card"
+                  onClick={() => {
+                    setTab('account');
+                    setProfileSection('identity');
+                  }}
+                >
+                  <strong>Kimlik bilgileri</strong>
+                  <span>Kullanıcı adı artık gerçekten kaydediliyor ve biçimi anında doğrulanıyor.</span>
+                </button>
+                <button
+                  type="button"
+                  className="whatsnew-card"
+                  onClick={() => {
+                    setTab('account');
+                    setProfileSection('banner');
+                  }}
+                >
+                  <strong>Profil banner'ı</strong>
+                  <span>Renk şeridi seçin veya kendi görselinizi yükleyin.</span>
+                </button>
+                <button
+                  type="button"
+                  className="whatsnew-card"
+                  onClick={() => {
+                    setTab('account');
+                    setProfileSection('badges');
+                  }}
+                >
+                  <strong>Rozet vitrini</strong>
+                  <span>Kazandığınız rozetlerden en fazla {MAX_FEATURED_BADGES} tanesini öne çıkarın.</span>
+                </button>
+                <button type="button" className="whatsnew-card" onClick={() => setTab('appearance')}>
+                  <strong>Görünüm ve vurgu rengi</strong>
+                  <span>Tema, vurgu rengi, mesaj yoğunluğu ve kompakt mod.</span>
+                </button>
+                <button type="button" className="whatsnew-card" onClick={() => setTab('privacy')}>
+                  <strong>Bildirimler</strong>
+                  <span>Masaüstü bildirimleri, sesler ve gizlilik tercihleri.</span>
+                </button>
+                <button type="button" className="whatsnew-card" onClick={() => setTab('security')}>
+                  <strong>Oturum güvenliği</strong>
+                  <span>Aktif oturumları görün, şifrenizi değiştirin.</span>
+                </button>
+              </div>
+              <h3 className="section-title">Topluluk şablonları</h3>
+              <p className="hint">
+                Topluluk oluştururken Oyun, Çalışma veya Topluluk şablonu seçerek hazır kategori ve kanal düzeni kurun.
+              </p>
+            </div>
           ) : null}
 
           {tab === 'appearance' ? (
