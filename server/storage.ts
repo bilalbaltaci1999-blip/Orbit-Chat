@@ -14,7 +14,7 @@ const ALLOWED_MIME = new Set([
   'image/jpeg',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
+  // SVG aktif içerik barındırabileceğinden yükleme listesine alınmıyor.
   'application/pdf',
   'text/plain',
   'text/markdown',
