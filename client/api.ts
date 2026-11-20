@@ -128,6 +128,7 @@ export const usersApi = {
   updateMe: (patch: {
     displayName?: string;
     username?: string;
+    avatarColor?: string;
     bio?: string;
     customStatus?: string;
     status?: string;

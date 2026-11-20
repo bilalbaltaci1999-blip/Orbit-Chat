@@ -1,6 +1,6 @@
 /** Kullanıcı profili, durum, tema ve gizlilik ayarları. */
 import { Router } from 'express';
-import { requireAuth } from '../auth';
+import { getUserRowById, requireAuth, toAuthUser } from '../auth';
 import { db, newId, now } from '../db';
 import { meUser } from '../bootstrap';
 import { ApiError } from '../permissions';
@@ -25,9 +25,32 @@ router.patch('/me', (req, res) => {
   const values: unknown[] = [];
   const body = req.body ?? {};
 
+  if (body.username !== undefined) {
+    const next = String(body.username ?? '')
+      .trim()
+      .toLowerCase();
+    if (!/^[a-z0-9_.]{3,24}$/.test(next)) {
+      throw new ApiError(
+        400,
+        'Kullanıcı adı 3-24 karakter olmalı; yalnızca küçük harf, sayı, nokta ve alt çizgi kullanın.',
+        'INVALID_USERNAME',
+        { username: 'Geçersiz biçim' },
+      );
+    }
+    const taken = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(next, req.user!.id) as
+      | { id: string }
+      | undefined;
+    if (taken) {
+      throw new ApiError(409, 'Bu kullanıcı adı zaten alınmış.', 'USERNAME_TAKEN', { username: 'Bu ad kullanılıyor' });
+    }
+    fields.push('username = ?');
+    values.push(next);
+  }
   if (body.displayName !== undefined) {
+    const nextName = optionalStr(body.displayName, 'Görünen ad', { max: 32 });
+    if (!nextName) throw new ApiError(400, 'Görünen ad boş olamaz.', 'INVALID_DISPLAY_NAME', { displayName: 'Bu alan zorunlu' });
     fields.push('display_name = ?');
-    values.push(optionalStr(body.displayName, 'Görünen ad', { max: 32 }) || req.user!.username);
+    values.push(nextName);
   }
   if (body.bio !== undefined) {
     fields.push('bio = ?');
@@ -64,37 +87,12 @@ router.patch('/me', (req, res) => {
   values.push(now());
   db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...values, req.user!.id);
 
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user!.id) as never;
-  const user = meUser({ ...req.user!, ...mapPatch(req.user!, body) });
+  const updated = getUserRowById(req.user!.id);
+  if (!updated) throw new ApiError(404, 'Kullanıcı bulunamadı.', 'USER_NOT_FOUND');
+  const user = meUser(toAuthUser(updated));
   broadcastPresence(req.user!.id);
-  res.json({ user, row: Boolean(row) });
+  res.json({ user });
 });
-
-type ProfilePatch = {
-  displayName?: string;
-  bio?: string;
-  avatarColor?: string;
-  customStatus?: string;
-  theme?: 'dark' | 'light';
-  status?: 'online' | 'idle' | 'dnd' | 'offline' | 'invisible';
-  bannerColor?: string;
-  featuredBadges?: string[];
-};
-
-function mapPatch(user: { status: string; customStatus: string }, body: Record<string, unknown>): ProfilePatch {
-  const patch: ProfilePatch = {};
-  if (body.displayName !== undefined) patch.displayName = String(body.displayName);
-  if (body.bio !== undefined) patch.bio = String(body.bio);
-  if (body.avatarColor !== undefined) patch.avatarColor = String(body.avatarColor);
-  if (body.customStatus !== undefined) patch.customStatus = String(body.customStatus);
-  if (body.theme !== undefined) patch.theme = body.theme === 'light' ? 'light' : 'dark';
-  if (body.bannerColor !== undefined) patch.bannerColor = String(body.bannerColor);
-  if (body.featuredBadges !== undefined) {
-    patch.featuredBadges = Array.isArray(body.featuredBadges) ? body.featuredBadges.map(String) : [];
-  }
-  if (body.status !== undefined) patch.status = String(body.status) as ProfilePatch['status'];
-  return patch;
-}
 
 function broadcastPresence(userId: string): void {
   const row = db.prepare('SELECT status, custom_status FROM users WHERE id = ?').get(userId) as

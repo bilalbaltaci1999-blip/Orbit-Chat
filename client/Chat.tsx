@@ -172,9 +172,19 @@ export default function Chat({
     return () => window.clearInterval(timer);
   }, []);
 
+  /* Okundu bilgisi her mesajda gönderilir; üst veri yenilemesi yalnızca kapsam ilk açıldığında
+     yapılır. Aksi hâlde her gönderimde tüm önyükleme yeniden çekiliyor, mesaj listesi boşalıp
+     yeniden yükleniyordu (yazarken kaybolma/flicker hatası). */
+  const markedScopeRef = useRef<string | null>(null);
   const markRead = useCallback(() => {
     const run = isChannel ? channelsApi.markRead(scopeId) : socialApi.markRead(scopeId);
-    run.then(() => onScopeChanged()).catch(() => undefined);
+    const notify = markedScopeRef.current !== scopeId;
+    markedScopeRef.current = scopeId;
+    run
+      .then(() => {
+        if (notify) onScopeChanged();
+      })
+      .catch(() => undefined);
   }, [isChannel, scopeId, onScopeChanged]);
 
   useEffect(() => {
