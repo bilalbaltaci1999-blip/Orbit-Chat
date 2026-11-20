@@ -14,7 +14,7 @@ const ALLOWED_MIME = new Set([
   'image/jpeg',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
+  // SVG aktif içerik barındırabileceğinden yükleme listesine alınmıyor.
   'application/pdf',
   'text/plain',
   'text/markdown',
@@ -47,6 +47,18 @@ function sanitizeName(name: string): string {
   return name.replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || 'dosya';
 }
 
+/** Do not trust the client-supplied MIME type for images shown inline in the app. */
+function validateImageSignature(buffer: Buffer, mime: string): void {
+  const valid =
+    (mime === 'image/png' && buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+    (mime === 'image/jpeg' && buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) ||
+    (mime === 'image/gif' && buffer.length >= 6 && ['GIF87a', 'GIF89a'].includes(buffer.toString('ascii', 0, 6))) ||
+    (mime === 'image/webp' && buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP');
+  if (!valid) {
+    throw new ApiError(400, 'Görsel içeriği dosya türüyle eşleşmiyor.', 'INVALID_IMAGE_CONTENT');
+  }
+}
+
 export interface StoredFile {
   id: string;
   name: string;
@@ -64,6 +76,8 @@ export function saveFile(input: {
   if (input.buffer.length > MAX_FILE_BYTES) {
     throw new ApiError(413, 'Dosya 25 MB sınırını aşıyor.', 'FILE_TOO_LARGE');
   }
+  if (input.mime.startsWith('image/')) validateImageSignature(input.buffer, input.mime);
+
   const id = newId('fil');
   const ext = path.extname(input.originalName).slice(0, 12).replace(/[^.\w]/g, '');
   const storageName = `${id}${ext}`;
